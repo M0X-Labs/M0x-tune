@@ -32,7 +32,7 @@ set "HUGGINGFACE_HUB_CACHE=%ROOT_DIR%.hf_home\hub"
 set "PYTHONUNBUFFERED=1"
 
 echo Starting backend server (FastAPI)...
-start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload > "%ROOT_DIR%backend.log" 2>&1"
+start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "%ROOT_DIR%backend.log" 2>&1"
 
 timeout /t 2 /nobreak >nul
 
