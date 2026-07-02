@@ -63,7 +63,26 @@ export async function GET() {
     for (const [key, val] of Object.entries(configData)) {
       const camelKey = snakeToCamel(key);
       if (camelKey === "codingDatasetPaths") {
-        camelConfig[camelKey] = Array.isArray(val) ? val : [];
+        camelConfig[camelKey] = (Array.isArray(val) ? val : []).map(p => {
+          if (typeof p === "string") {
+            const normalized = p.replace(/\\/g, "/");
+            const idx = normalized.indexOf("datasets/");
+            if (idx !== -1) {
+              return normalized.substring(idx);
+            }
+            return normalized;
+          }
+          return p;
+        });
+      } else if (camelKey === "codingDatasetPath") {
+        const p = String(val);
+        const normalized = p.replace(/\\/g, "/");
+        const idx = normalized.indexOf("datasets/");
+        if (idx !== -1) {
+          camelConfig[camelKey] = normalized.substring(idx);
+        } else {
+          camelConfig[camelKey] = normalized;
+        }
       } else {
         camelConfig[camelKey] = String(val);
       }

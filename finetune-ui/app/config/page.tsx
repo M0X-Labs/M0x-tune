@@ -521,33 +521,6 @@ export default function ConfigPage() {
                   Training Datasets (Select 1 or more)
                 </label>
                 <div className="max-h-48 overflow-y-auto border border-[var(--line)] rounded-md bg-[var(--surface-subtle)] p-2.5 space-y-2">
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={(values.codingDatasetPaths || []).includes("datasets/train_clean.parquet") || values.codingDatasetPath === "datasets/train_clean.parquet"}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        let updated = [...(values.codingDatasetPaths || [])];
-                        if (checked) {
-                          if (!updated.includes("datasets/train_clean.parquet")) {
-                            updated.push("datasets/train_clean.parquet");
-                          }
-                          set("codingDatasetPath", "datasets/train_clean.parquet");
-                        } else {
-                          updated = updated.filter(p => p !== "datasets/train_clean.parquet");
-                          if (updated.length > 0) {
-                            set("codingDatasetPath", updated[0]);
-                          } else {
-                            set("codingDatasetPath", "");
-                          }
-                        }
-                        set("codingDatasetPaths", updated);
-                      }}
-                      className="accent-[var(--accent)]"
-                    />
-                    <span className="truncate">Default (train_clean.parquet)</span>
-                  </label>
-
                   {datasets.map((d) =>
                     (d.files ?? []).map((f: any) => {
                       const isChecked = (values.codingDatasetPaths || []).includes(f.path) || values.codingDatasetPath === f.path;

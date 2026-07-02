@@ -67,7 +67,25 @@ async function loadTrainingPayload(request: Request) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const requestedJobId = url.searchParams.get("jobId");
-  const jobId = requestedJobId ?? activeJobId;
+  let jobId = requestedJobId ?? activeJobId;
+
+  if (!jobId) {
+    try {
+      const activeRes = await fetch(buildBackendUrl("/api/jobs/active"), {
+        cache: "no-store",
+      });
+      if (activeRes.ok) {
+        const data = (await activeRes.json()) as { jobId: string | null; status: BackendJobStatus };
+        if (data.jobId) {
+          jobId = data.jobId;
+          activeJobId = data.jobId;
+          processStatus = toRouteStatus(data.status);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch active job from backend", err);
+    }
+  }
 
   if (!jobId) {
     return new NextResponse(
@@ -103,10 +121,24 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (activeJobId) {
-    const snapshot = await getSnapshot(activeJobId);
-    if (snapshot && (snapshot.status === "queued" || snapshot.status === "running")) {
-      return NextResponse.json({ error: "Training is already running", jobId: activeJobId }, { status: 400 });
+  try {
+    const activeRes = await fetch(buildBackendUrl("/api/jobs/active"), {
+      cache: "no-store",
+    });
+    if (activeRes.ok) {
+      const data = (await activeRes.json()) as { jobId: string | null; status: BackendJobStatus };
+      if (data.jobId && (data.status === "queued" || data.status === "running")) {
+        activeJobId = data.jobId;
+        processStatus = toRouteStatus(data.status);
+        return NextResponse.json({ error: "Training is already running", jobId: data.jobId }, { status: 400 });
+      }
+    }
+  } catch (err) {
+    if (activeJobId) {
+      const snapshot = await getSnapshot(activeJobId);
+      if (snapshot && (snapshot.status === "queued" || snapshot.status === "running")) {
+        return NextResponse.json({ error: "Training is already running", jobId: activeJobId }, { status: 400 });
+      }
     }
   }
 
@@ -129,11 +161,24 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  if (!activeJobId) {
+  let jobId = activeJobId;
+  if (!jobId) {
+    try {
+      const activeRes = await fetch(buildBackendUrl("/api/jobs/active"), {
+        cache: "no-store",
+      });
+      if (activeRes.ok) {
+        const data = (await activeRes.json()) as { jobId: string | null };
+        jobId = data.jobId;
+      }
+    } catch {}
+  }
+
+  if (!jobId) {
     return NextResponse.json({ error: "No training process is running" }, { status: 400 });
   }
 
-  const response = await fetch(buildBackendUrl(`/api/jobs/${activeJobId}`), {
+  const response = await fetch(buildBackendUrl(`/api/jobs/${jobId}`), {
     method: "DELETE",
   }).catch(() => null);
 
@@ -142,8 +187,9 @@ export async function DELETE() {
     return NextResponse.json({ error: "Failed to terminate backend job", detail }, { status: 502 });
   }
 
-  const currentJobId = activeJobId;
-  activeJobId = null;
-  processStatus = "idle";
-  return NextResponse.json({ success: true, status: "terminated", jobId: currentJobId });
+  if (jobId === activeJobId) {
+    activeJobId = null;
+    processStatus = "idle";
+  }
+  return NextResponse.json({ success: true, status: "terminated", jobId });
 }
