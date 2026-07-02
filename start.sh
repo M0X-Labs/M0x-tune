@@ -47,7 +47,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting backend server (FastAPI)..."
-"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload > "$ROOT_DIR/backend.log" 2>&1 &
+"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "$ROOT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 sleep 2
