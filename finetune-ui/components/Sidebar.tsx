@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "../app/context/ThemeContext";
+import { useLogs } from "../app/context/LogsContext";
 
 const ProfileAvatar = () => (
   <img
@@ -107,6 +108,7 @@ const externalResources = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { openLogsPanel, toggleLogsPanel, activeService } = useLogs();
 
   return (
     <aside className="w-full md:w-60 shrink-0 h-auto md:h-full flex flex-col justify-between py-6 px-4 text-[var(--text-secondary)] relative z-30 select-none bg-[var(--sidebar-bg)] rounded-xl md:rounded-2xl border border-[var(--line)] shadow-lg transition-all duration-300">
@@ -200,6 +202,43 @@ export default function Sidebar() {
                 </Link>
               );
             })}
+            
+            {/* System Logs Hover Selector */}
+            <div className="relative group/logs">
+              <button
+                onClick={() => toggleLogsPanel(activeService || "backend")}
+                className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-[12px] border border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] hover:border-[var(--line)]/50 transition-all duration-200 cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="shrink-0 text-[var(--text-muted)] group-hover/logs:text-[var(--text-secondary)]">
+                    <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25V4.5m0 15v2.25m-9-9h2.25m15 0H21m-2.225-6.225L17.15 8.275M6.875 18.525l-1.625-1.625m11.375 0 1.625 1.625M6.875 5.475 5.25 7.1" />
+                    </svg>
+                  </span>
+                  <span className="truncate tracking-wide text-left">System Logs</span>
+                </div>
+                <span className="text-[var(--text-muted)] group-hover/logs:translate-x-0.5 transition-transform duration-200 text-[10px]">
+                  ▶
+                </span>
+              </button>
+              
+              {/* Floating Hover Submenu */}
+              <div className="absolute left-full top-0 ml-2 w-36 bg-[var(--sidebar-bg)] border border-[var(--line)] rounded-xl shadow-xl p-1.5 opacity-0 invisible group-hover/logs:opacity-100 group-hover/logs:visible transition-all duration-200 flex flex-col gap-1 z-40">
+                <button
+                  onClick={() => openLogsPanel("backend")}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+                >
+                  Backend Logs
+                </button>
+                <button
+                  onClick={() => openLogsPanel("frontend")}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
+                >
+                  Frontend Logs
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

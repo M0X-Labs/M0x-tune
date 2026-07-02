@@ -1,16 +1,15 @@
 {
   "local_model_path": "./base_model",
-  "coding_dataset_path": "D:/models/m0x-tune/datasets/train_clean.parquet",
+  "coding_dataset_path": "datasets/identity_dataset.jsonl",
   "coding_dataset_paths": [
-    "D:/models/m0x-tune/datasets/train_clean.parquet",
-    "D:/models/m0x-tune/datasets/identity_dataset.jsonl"
+    "datasets/identity_dataset.jsonl"
   ],
   "output_gguf_name": "m0x_m1",
   "learning_rate": 0.0002,
-  "max_steps": 300,
-  "per_device_train_batch_size": 2,
-  "gradient_accumulation_steps": 8,
-  "max_seq_length": 2048,
-  "lora_r": 16,
+  "max_steps": 150,
+  "per_device_train_batch_size": 1,
+  "gradient_accumulation_steps": 4,
+  "max_seq_length": 512,
+  "lora_r": 8,
   "lora_alpha": 16
 }
