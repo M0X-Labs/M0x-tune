@@ -1,0 +1,36 @@
+# Local model weights and cache directories
+base_model/
+**/venv/
+**/.venv/
+**/.uv_cache/
+**/.unsloth/
+**/.tmp/
+**/.pip_cache/
+**/.npm-cache/
+**/.npm_cache/
+**/.hf_home/
+**/.vs/
+identity/
+datasets/
+mllm-runner/
+
+# Backend runtime directory (jobs config, uploaded datasets, downloaded models)
+backend/runtime/
+
+# Frontend/Node dependencies and build output
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+
+# Python cache and compiled files
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/*.pyd
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# 

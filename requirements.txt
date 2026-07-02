@@ -1,0 +1,18 @@
+# Core Unsloth fine-tuning dependencies
+trl
+peft
+accelerate
+bitsandbytes
+datasets
+huggingface_hub
+torch
+transformers
+unsloth[windows] @ git+https://github.com/unslothai/unsloth.git
+
+# Backend web server dependencies
+uvicorn[standard]
+fastapi
+pydantic
+python-multipart
+aiofiles
+pyarrow
