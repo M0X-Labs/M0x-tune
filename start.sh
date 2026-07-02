@@ -64,6 +64,7 @@ export PYTHONUNBUFFERED=1
 # Propagate ports to frontend Next.js server
 export BACKEND_API_URL="http://127.0.0.1:$PORT_BACKEND"
 export PORT="$PORT_FRONTEND"
+export HOSTNAME="0.0.0.0"
 
 # Function to cleanup on exit
 cleanup() {

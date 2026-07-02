@@ -57,6 +57,7 @@ set "PYTHONUNBUFFERED=1"
 REM Propagate ports to frontend Next.js server
 set "BACKEND_API_URL=http://127.0.0.1:%PORT_BACKEND%"
 set "PORT=%PORT_FRONTEND%"
+set "HOSTNAME=0.0.0.0"
 
 echo Starting backend server (FastAPI) on port %PORT_BACKEND%...
 start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port %PORT_BACKEND% > "%ROOT_DIR%backend.log" 2>&1"
