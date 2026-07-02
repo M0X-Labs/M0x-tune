@@ -101,7 +101,7 @@ class JobRuntime:
 jobs: dict[str, JobRuntime] = {}
 jobs_lock = threading.Lock()
 
-app = FastAPI(title="m0x-coder backend", version="0.1.0")
+app = FastAPI(title="m0x-tune backend", version="0.1.0")
 
 
 def broadcast(job: JobRuntime, event: str, data: Any) -> None:

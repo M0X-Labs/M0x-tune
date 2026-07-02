@@ -5,7 +5,7 @@ set "ROOT_DIR=%~dp0"
 cd /d "%ROOT_DIR%"
 
 echo ============================================
-echo   m0x-coder - Fine-Tuning Platform
+echo   m0x-tune - Fine-Tuning Platform
 echo ============================================
 echo.
 
@@ -31,13 +31,13 @@ set "HF_HOME=%ROOT_DIR%.hf_home"
 set "HUGGINGFACE_HUB_CACHE=%ROOT_DIR%.hf_home\hub"
 
 echo Starting backend server (FastAPI)...
-start "m0x-coder Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 timeout /t 2 /nobreak >nul
 
 echo Starting frontend server (Next.js)...
 cd finetune-ui
-start "m0x-coder Frontend" cmd /k "npm run start"
+start "m0x-tune Frontend" cmd /k "npm run start"
 cd ..
 
 echo.
