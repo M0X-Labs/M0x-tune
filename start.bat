@@ -9,6 +9,29 @@ echo   m0x-tune - Fine-Tuning Platform
 echo ============================================
 echo.
 
+REM Set default ports
+set "PORT_BACKEND=8000"
+set "PORT_FRONTEND=3000"
+
+REM Parse command line options
+:parse_args
+if "%~1"=="" goto end_parse
+if "%~1"=="--backend-port" (
+    set "PORT_BACKEND=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="--frontend-port" (
+    set "PORT_FRONTEND=%~2"
+    shift
+    shift
+    goto parse_args
+)
+shift
+goto parse_args
+:end_parse
+
 REM Check if .venv exists
 if not exist ".venv\Scripts\python.exe" (
     echo Virtual environment not found!
@@ -31,12 +54,16 @@ set "HF_HOME=%ROOT_DIR%.hf_home"
 set "HUGGINGFACE_HUB_CACHE=%ROOT_DIR%.hf_home\hub"
 set "PYTHONUNBUFFERED=1"
 
-echo Starting backend server (FastAPI)...
-start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "%ROOT_DIR%backend.log" 2>&1"
+REM Propagate ports to frontend Next.js server
+set "BACKEND_API_URL=http://127.0.0.1:%PORT_BACKEND%"
+set "PORT=%PORT_FRONTEND%"
+
+echo Starting backend server (FastAPI) on port %PORT_BACKEND%...
+start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port %PORT_BACKEND% > "%ROOT_DIR%backend.log" 2>&1"
 
 timeout /t 2 /nobreak >nul
 
-echo Starting frontend server (Next.js)...
+echo Starting frontend server (Next.js) on port %PORT_FRONTEND%...
 cd finetune-ui
 start "m0x-tune Frontend" cmd /k "npm run start > "%ROOT_DIR%frontend.log" 2>&1"
 cd ..
@@ -44,8 +71,8 @@ cd ..
 echo.
 echo ============================================
 echo   Both servers are starting!
-echo   Backend: http://localhost:8000
-echo   Frontend: http://localhost:3000
+echo   Backend: http://localhost:%PORT_BACKEND%
+echo   Frontend: http://localhost:%PORT_FRONTEND%
 echo ============================================
 echo.
 echo Press any key to exit (servers will continue running)...
