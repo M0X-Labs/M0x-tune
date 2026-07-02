@@ -1,10 +1,10 @@
-# m0x-coder: Open-Source AI Fine-Tuning Platform
+# m0x-tune: Open-Source AI Fine-Tuning Platform
 
 A full-featured, open-source fine-tuning platform inspired by Unsloth, equipped with a responsive web-based UI. This platform allows you to auto-configure your environment, download Hugging Face models, upload datasets, and manage complex LoRA/QLoRA fine-tuning jobs completely through the browser.
 
 ## Website Overview
 
-The m0x-coder platform features a modern, intuitive web interface built with Next.js that provides comprehensive control over the fine-tuning process. The website is organized into several key sections:
+The m0x-tune platform features a modern, intuitive web interface built with Next.js that provides comprehensive control over the fine-tuning process. The website is organized into several key sections:
 
 ### Dashboard
 - **Real-time Overview**: Live statistics showing total trainings, success rate, exported models, and last training time
@@ -120,7 +120,7 @@ The platform will be available at:
 ## Project Structure
 
 ```
-m0x-coder/
+m0x-tune/
 ├── backend/               # FastAPI backend
 │   ├── train/             # Training engine
 │   │   ├── engine.py       # Core training logic

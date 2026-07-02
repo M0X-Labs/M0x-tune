@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 echo "============================================"
-echo "  m0x-coder - Fine-Tuning Platform"
+echo "  m0x-tune - Fine-Tuning Platform"
 echo "============================================"
 echo ""
 

@@ -1,6 +1,6 @@
-# Contributing to m0x-coder
+# Contributing to m0x-tune
 
-Thank you for your interest in contributing to m0x-coder! We welcome contributions from the community.
+Thank you for your interest in contributing to m0x-tune! We welcome contributions from the community.
 
 ## How to Contribute
 
