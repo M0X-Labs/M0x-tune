@@ -3,8 +3,8 @@ import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 
 export const metadata: Metadata = {
-  title: "m0x-m1 Fine-Tuner Studio",
-  description: "Fine-tuning studio for Gemma 4 models",
+  title: "M0X Fine-Tuner Studio",
+  description: "Fine-tuning studio for LLM's",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
