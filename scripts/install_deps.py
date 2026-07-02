@@ -117,8 +117,6 @@ def build_install_command(cuda_tag: str, python_executable: str) -> list[str]:
         "unsafe-best-match",
         "--index-url",
         profile["index_url"],
-        "--retries",
-        "10",
     ]
 
     if profile["index_url"] != "https://pypi.org/simple":
@@ -203,6 +201,7 @@ def main() -> int:
     os.environ["TMP"] = str(PROJECT_ROOT / ".tmp")
     os.environ["HF_HOME"] = str(PROJECT_ROOT / ".hf_home")
     os.environ["HUGGINGFACE_HUB_CACHE"] = str(PROJECT_ROOT / ".hf_home" / "hub")
+    os.environ["UV_HTTP_RETRIES"] = "10"
 
     hardware = load_hardware_info()
     cuda_tag = hardware.get("selected_cuda_tag", "cpu")
