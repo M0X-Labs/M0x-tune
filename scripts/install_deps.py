@@ -157,7 +157,28 @@ def install_torch_first(cuda_tag: str, python_executable: str) -> None:
             torch_command.extend(["--extra-index-url", "https://pypi.org/simple"])
         
         torch_command.extend(torch_packages)
-        subprocess.run(torch_command, cwd=PROJECT_ROOT, check=True)
+        try:
+            subprocess.run(torch_command, cwd=PROJECT_ROOT, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to install specific torch version(s) {torch_packages} (likely due to Python version mismatch). Error: {e}")
+            print("Attempting to install generic 'torch' package from CUDA/PyPI indexes as a fallback...")
+            
+            fallback_command = [
+                python_executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                profile["index_url"],
+            ]
+            if profile["index_url"] != "https://pypi.org/simple":
+                fallback_command.extend(["--extra-index-url", "https://pypi.org/simple"])
+            fallback_command.append("torch")
+            
+            subprocess.run(fallback_command, cwd=PROJECT_ROOT, check=True)
+            # Update the profile packages list so the subsequent uv pip install uses the unpinned generic package
+            profile["packages"] = ["torch"]
+            print("Successfully installed generic 'torch' and updated installation profile.")
 
 
 def main() -> int:
