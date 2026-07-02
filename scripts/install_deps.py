@@ -76,11 +76,17 @@ def load_hardware_info() -> dict[str, Any]:
 
 
 def ensure_uv_installed() -> None:
-    subprocess.run(
-        [sys.executable, "-m", "ensurepip", "--upgrade"],
-        cwd=PROJECT_ROOT,
-        check=True,
-    )
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "ensurepip", "--upgrade"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+        )
+    except Exception:
+        # On some Linux distros (e.g. Debian/Ubuntu), ensurepip is disabled.
+        # Since pip is usually pre-installed on Colab/Kaggle anyway, we can safe-ignore this.
+        pass
+
     # Install setuptools first - required for building packages like xformers
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "setuptools", "wheel"],
