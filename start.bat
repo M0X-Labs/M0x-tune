@@ -29,15 +29,16 @@ set "TEMP=%ROOT_DIR%.tmp"
 set "TMP=%ROOT_DIR%.tmp"
 set "HF_HOME=%ROOT_DIR%.hf_home"
 set "HUGGINGFACE_HUB_CACHE=%ROOT_DIR%.hf_home\hub"
+set "PYTHONUNBUFFERED=1"
 
 echo Starting backend server (FastAPI)...
-start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload > "%ROOT_DIR%backend.log" 2>&1"
 
 timeout /t 2 /nobreak >nul
 
 echo Starting frontend server (Next.js)...
 cd finetune-ui
-start "m0x-tune Frontend" cmd /k "npm run start"
+start "m0x-tune Frontend" cmd /k "npm run start > "%ROOT_DIR%frontend.log" 2>&1"
 cd ..
 
 echo.
