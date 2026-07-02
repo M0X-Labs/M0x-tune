@@ -191,42 +191,52 @@ def run_job(job: JobRuntime) -> None:
     env = dict(os.environ)
     env["PYTHONUNBUFFERED"] = "1"
 
-    process = subprocess.Popen(
-        [sys.executable, "-m", "backend.train.runner", "--job-config", str(job.config_path)],
-        cwd=PROJECT_ROOT,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,
-    )
+    try:
+        process = subprocess.Popen(
+            [sys.executable, "-m", "backend.train.runner", "--job-config", str(job.config_path)],
+            cwd=PROJECT_ROOT,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
 
-    with job.lock:
-        job.process = process
-
-    stdout_thread = threading.Thread(target=stream_reader, args=(job, process.stdout), daemon=True)
-    stderr_thread = threading.Thread(target=stream_reader, args=(job, process.stderr), daemon=True)
-    stdout_thread.start()
-    stderr_thread.start()
-
-    return_code = process.wait()
-    stdout_thread.join(timeout=1)
-    stderr_thread.join(timeout=1)
-
-    with job.lock:
-        cancelled = job.status == "cancelled"
-        job.process = None
-
-    if cancelled:
-        append_log(job, "[SYSTEM] Training terminated by user.")
-        return
-
-    if return_code == 0:
         with job.lock:
-            job.percent = 100
-        update_job_status(job, "completed")
-    else:
+            job.process = process
+
+        stdout_thread = threading.Thread(target=stream_reader, args=(job, process.stdout), daemon=True)
+        stderr_thread = threading.Thread(target=stream_reader, args=(job, process.stderr), daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
+
+        return_code = process.wait()
+        stdout_thread.join(timeout=1)
+        stderr_thread.join(timeout=1)
+
+        with job.lock:
+            cancelled = job.status == "cancelled"
+            job.process = None
+
+        if cancelled:
+            append_log(job, "[SYSTEM] Training terminated by user.")
+            return
+
+        if return_code == 0:
+            with job.lock:
+                job.percent = 100
+            update_job_status(job, "completed")
+        else:
+            update_job_status(job, "failed")
+            append_log(job, f"[SYSTEM] Training failed with return code {return_code}.")
+    except Exception as exc:
+        with job.lock:
+            job.process = None
         update_job_status(job, "failed")
+        import traceback
+        err_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        append_log(job, f"[SYSTEM] Failed to start training runner process:\n{err_msg}")
+
 
 
 def persist_job_payload(job_id: str, payload: TrainingJobPayload) -> Path:
@@ -531,6 +541,20 @@ def create_job(payload: TrainingJobPayload) -> JSONResponse:
     return JSONResponse({"jobId": job_id, "status": "queued"}, status_code=202)
 
 
+@app.get("/api/jobs/active")
+def get_active_job() -> dict[str, Any]:
+    with jobs_lock:
+        # Find any running or queued jobs first
+        for job in jobs.values():
+            if job.status in ("running", "queued"):
+                return {"jobId": job.job_id, "status": job.status}
+        # If none, return the latest job (the last in the dictionary)
+        if jobs:
+            latest_job = list(jobs.values())[-1]
+            return {"jobId": latest_job.job_id, "status": latest_job.status}
+        return {"jobId": None, "status": "idle"}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job_snapshot(job_id: str) -> TrainingJobSnapshot:
     return get_job(job_id).snapshot()
@@ -768,4 +792,62 @@ def map_dataset_columns(dataset_id: str, file_id: str, payload: MapColumnsPayloa
         src_output=payload.srcOutput,
         src_cot=payload.srcCot
     )
+
+
+def tail_log_file(file_path: Path):
+    if not file_path.exists():
+        yield f"data: {json.dumps({'text': f'[SYSTEM] Log file {file_path.name} not found.'})}\n\n"
+        return
+
+    # Send the last 100 lines first if they exist
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+            for line in lines[-100:]:
+                yield f"data: {json.dumps({'text': line.rstrip()})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'text': f'[SYSTEM] Error reading log file: {e}'})}\n\n"
+        return
+
+    # Stream new lines by periodically checking for size changes
+    last_pos = file_path.stat().st_size
+    try:
+        while True:
+            import time
+            time.sleep(0.5)
+            
+            if not file_path.exists():
+                continue
+                
+            curr_size = file_path.stat().st_size
+            if curr_size < last_pos:
+                last_pos = 0
+                yield f"data: {json.dumps({'text': '[SYSTEM] Log file was cleared/truncated.'})}\n\n"
+                
+            if curr_size > last_pos:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    f.seek(last_pos)
+                    new_content = f.read()
+                    last_pos = f.tell()
+                    
+                # Split and yield all lines in new content
+                for line in new_content.splitlines():
+                    yield f"data: {json.dumps({'text': line.rstrip()})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'text': f'[SYSTEM] Log stream interrupted: {e}'})}\n\n"
+
+
+@app.get("/api/system/logs/{service}")
+def stream_system_logs(service: str) -> StreamingResponse:
+    if service not in ("backend", "frontend"):
+        raise HTTPException(status_code=400, detail="Invalid service name.")
+
+    file_path = PROJECT_ROOT / f"{service}.log"
+
+    return StreamingResponse(
+        tail_log_file(file_path),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
 

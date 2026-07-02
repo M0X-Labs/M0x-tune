@@ -31,7 +31,30 @@ def _load_metadata() -> dict[str, Any]:
         return {"datasets": {}}
     try:
         with open(METADATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        
+        # Migrate absolute paths to relative paths
+        changed = False
+        for ds in data.get("datasets", {}).values():
+            for file_info in ds.get("files", []):
+                path_str = file_info.get("path", "")
+                if path_str:
+                    try:
+                        p = Path(path_str)
+                        if p.is_absolute():
+                            if "datasets" in p.parts:
+                                idx = p.parts.index("datasets")
+                                new_path = "/".join(p.parts[idx:])
+                            else:
+                                new_path = f"datasets/{p.name}"
+                            file_info["path"] = new_path
+                            changed = True
+                    except Exception:
+                        pass
+        
+        if changed:
+            _save_metadata(data)
+        return data
     except Exception:
         return {"datasets": {}}
 
@@ -84,10 +107,16 @@ def _sync_local_datasets() -> None:
                 else:
                     columns, rows = [], 0
 
+                try:
+                    rel_path = item.relative_to(PROJECT_ROOT)
+                    path_str = str(rel_path).replace("\\", "/")
+                except ValueError:
+                    path_str = str(item).replace("\\", "/")
+
                 file_info = {
                     "id": uuid.uuid4().hex,
                     "name": item.name,
-                    "path": str(item).replace("\\", "/"),
+                    "path": path_str,
                     "size_bytes": item.stat().st_size,
                     "rows": rows,
                     "format": format_type,
