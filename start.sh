@@ -9,6 +9,35 @@ echo "  m0x-tune - Fine-Tuning Platform"
 echo "============================================"
 echo ""
 
+# Default ports
+PORT_BACKEND=${PORT_BACKEND:-8000}
+PORT_FRONTEND=${PORT_FRONTEND:-3000}
+
+# Parse command line options
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --backend-port)
+      if [ -z "${2:-}" ]; then
+        echo "Error: --backend-port requires an argument"
+        exit 1
+      fi
+      PORT_BACKEND="$2"
+      shift 2
+      ;;
+    --frontend-port)
+      if [ -z "${2:-}" ]; then
+        echo "Error: --frontend-port requires an argument"
+        exit 1
+      fi
+      PORT_FRONTEND="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
 # Check Python path
 if [[ -x ".venv/Scripts/python.exe" ]]; then
   PYTHON=".venv/Scripts/python.exe"
@@ -32,6 +61,10 @@ export HF_HOME="$ROOT_DIR/.hf_home"
 export HUGGINGFACE_HUB_CACHE="$ROOT_DIR/.hf_home/hub"
 export PYTHONUNBUFFERED=1
 
+# Propagate ports to frontend Next.js server
+export BACKEND_API_URL="http://127.0.0.1:$PORT_BACKEND"
+export PORT="$PORT_FRONTEND"
+
 # Function to cleanup on exit
 cleanup() {
   echo ""
@@ -46,13 +79,13 @@ cleanup() {
 
 trap cleanup EXIT
 
-echo "Starting backend server (FastAPI)..."
-"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "$ROOT_DIR/backend.log" 2>&1 &
+echo "Starting backend server (FastAPI) on port $PORT_BACKEND..."
+"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port "$PORT_BACKEND" > "$ROOT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 sleep 2
 
-echo "Starting frontend server (Next.js)..."
+echo "Starting frontend server (Next.js) on port $PORT_FRONTEND..."
 cd finetune-ui
 npm run start > "$ROOT_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
@@ -61,8 +94,8 @@ cd ..
 echo ""
 echo "============================================"
 echo "  Both servers are running!"
-echo "  Backend: http://localhost:8000"
-echo "  Frontend: http://localhost:3000"
+echo "  Backend: http://localhost:$PORT_BACKEND"
+echo "  Frontend: http://localhost:$PORT_FRONTEND"
 echo "============================================"
 echo ""
 echo "Press Ctrl+C to stop both servers..."
