@@ -88,7 +88,7 @@ sleep 2
 
 echo "Starting frontend server (Next.js) on port $PORT_FRONTEND..."
 cd finetune-ui
-npm run start > "$ROOT_DIR/frontend.log" 2>&1 &
+npm run start -- -H 0.0.0.0 -p "$PORT_FRONTEND" > "$ROOT_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
