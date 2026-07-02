@@ -117,6 +117,8 @@ def build_install_command(cuda_tag: str, python_executable: str) -> list[str]:
         "unsafe-best-match",
         "--index-url",
         profile["index_url"],
+        "--retries",
+        "10",
     ]
 
     if profile["index_url"] != "https://pypi.org/simple":
@@ -223,7 +225,20 @@ def main() -> int:
     
     # Now install everything else
     command = build_install_command(cuda_tag, sys.executable)
-    subprocess.run(command, cwd=PROJECT_ROOT, check=True)
+    
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"Installing dependencies with uv (attempt {attempt}/{max_retries})...")
+            subprocess.run(command, cwd=PROJECT_ROOT, check=True)
+            break
+        except subprocess.CalledProcessError as e:
+            if attempt < max_retries:
+                import time
+                print(f"Warning: Installation failed: {e}. Retrying in 10 seconds...")
+                time.sleep(10)
+            else:
+                raise e
     return 0
 
 
