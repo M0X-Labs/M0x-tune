@@ -13,6 +13,7 @@ base_model/
 identity/
 datasets/
 mllm-runner/
+**/_compiled_cache/
 
 # Backend runtime directory (jobs config, uploaded datasets, downloaded models)
 backend/runtime/
