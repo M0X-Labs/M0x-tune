@@ -555,6 +555,77 @@ def get_active_job() -> dict[str, Any]:
         return {"jobId": None, "status": "idle"}
 
 
+@app.get("/api/train/active")
+def get_train_active() -> dict[str, Any]:
+    with jobs_lock:
+        # Find any running or queued jobs first
+        for job in jobs.values():
+            if job.status in ("running", "queued"):
+                return {
+                    "active": True,
+                    "job": {
+                        "id": job.job_id,
+                        "status": "running",
+                        "progress": job.percent,
+                        "currentStep": job.step,
+                        "totalSteps": job.total_steps,
+                        "eta": "Calculating..."
+                    }
+                }
+        # If none, return the latest job (the last in the dictionary)
+        if jobs:
+            latest_job = list(jobs.values())[-1]
+            status_map = {
+                "running": "running",
+                "queued": "running",
+                "completed": "completed",
+                "failed": "failed",
+                "cancelled": "idle"
+            }
+            return {
+                "active": False,
+                "job": {
+                    "id": latest_job.job_id,
+                    "status": status_map.get(latest_job.status, "idle"),
+                    "progress": latest_job.percent,
+                    "currentStep": latest_job.step,
+                    "totalSteps": latest_job.total_steps,
+                }
+            }
+        return {"active": False, "job": None}
+
+
+@app.get("/api/train/stats")
+def get_train_stats() -> dict[str, Any]:
+    with jobs_lock:
+        total = len(jobs)
+        completed = sum(1 for j in jobs.values() if j.status == "completed")
+        
+        last_training = None
+        if jobs:
+            latest_job = list(jobs.values())[-1]
+            try:
+                mtime = latest_job.config_path.stat().st_mtime
+                import datetime
+                last_training = datetime.datetime.fromtimestamp(mtime, datetime.timezone.utc).isoformat()
+            except Exception:
+                pass
+                
+    from backend.export_service import list_exported_files
+    try:
+        exported_files = list_exported_files()
+        exported_count = len(exported_files)
+    except Exception:
+        exported_count = 0
+
+    return {
+        "totalTrainings": total,
+        "completedTrainings": completed,
+        "exportedModels": exported_count,
+        "lastTraining": last_training,
+    }
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job_snapshot(job_id: str) -> TrainingJobSnapshot:
     return get_job(job_id).snapshot()
