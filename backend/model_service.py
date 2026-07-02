@@ -289,6 +289,7 @@ def _run_download(
                         progress_callback(n, int(total))
 
             from huggingface_hub import utils as hf_utils  # type: ignore
+            old_hook = getattr(hf_utils, "tqdm", None)
 
             try:
                 hf_utils.tqdm = _tqdm_hook
@@ -300,7 +301,8 @@ def _run_download(
                     allow_patterns=["*.safetensors", "*.json", "*.model", "*.txt", "*.py"],
                 )
             finally:
-                hf_utils.tqdm = old_hook
+                if old_hook is not None:
+                    hf_utils.tqdm = old_hook
         except ImportError:
             snapshot_download(
                 repo_id=state.repo_id,
