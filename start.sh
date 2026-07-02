@@ -30,6 +30,7 @@ export TEMP="$ROOT_DIR/.tmp"
 export TMP="$ROOT_DIR/.tmp"
 export HF_HOME="$ROOT_DIR/.hf_home"
 export HUGGINGFACE_HUB_CACHE="$ROOT_DIR/.hf_home/hub"
+export PYTHONUNBUFFERED=1
 
 # Function to cleanup on exit
 cleanup() {
@@ -46,14 +47,14 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting backend server (FastAPI)..."
-"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload &
+"$PYTHON" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload > "$ROOT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 sleep 2
 
 echo "Starting frontend server (Next.js)..."
 cd finetune-ui
-npm run start &
+npm run start > "$ROOT_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
