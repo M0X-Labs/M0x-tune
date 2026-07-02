@@ -34,4 +34,5 @@ backend/runtime/
 .DS_Store
 Thumbs.db
 
-# 
+# Log files
+*.log
