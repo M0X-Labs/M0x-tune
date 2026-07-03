@@ -38,7 +38,12 @@ if command -v node >/dev/null 2>&1; then
   if command -v npm >/dev/null 2>&1; then
     echo "Node.js and npm found. Installing frontend dependencies..."
     cd "$ROOT_DIR/finetune-ui"
-    npm install || echo "Warning: npm install failed in finetune-ui."
+    if npm install; then
+      echo "Frontend dependencies successfully installed. Building frontend..."
+      npm run build || echo "Warning: npm run build failed in finetune-ui."
+    else
+      echo "Warning: npm install failed in finetune-ui."
+    fi
     cd "$ROOT_DIR"
   else
     echo "Warning: npm was not found. Please install npm to run the web interface."
