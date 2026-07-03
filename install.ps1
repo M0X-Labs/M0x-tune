@@ -25,6 +25,23 @@ if (Test-Path $TargetDir) {
     Write-Host "Directory '$TargetDir' already exists. Updating existing repository..." -ForegroundColor Yellow
     Set-Location $TargetDir
     git pull origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "Warning: git pull failed (likely due to local changes like edits)." -ForegroundColor Yellow
+        $overwrite = "n"
+        try {
+            $overwrite = Read-Host "Would you like to overwrite your local changes and update? (y/N)"
+        } catch {
+            $overwrite = "n"
+        }
+        if ($overwrite -match "^[yY]") {
+            Write-Host "Overwriting local changes and updating..." -ForegroundColor Gray
+            git reset --hard HEAD
+            git pull origin main
+        } else {
+            Write-Host "Skipping update of local files. Continuing with your existing files..." -ForegroundColor Gray
+        }
+    }
 } else {
     Write-Host "Cloning m0x-tune repository..." -ForegroundColor Gray
     git clone https://github.com/M0X-Labs/M0x-tune.git $TargetDir
