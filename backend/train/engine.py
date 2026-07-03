@@ -161,6 +161,11 @@ def run_training_job(config: TrainingJobPayload) -> None:
     prepare_runtime_environment()
 
     import torch
+    # Clean up GPU memory and run garbage collection before starting
+    import gc
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     from datasets import concatenate_datasets, load_dataset
     from transformers import TrainingArguments
     from trl import SFTTrainer
