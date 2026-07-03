@@ -5,6 +5,13 @@
 
 $ErrorActionPreference = "Stop"
 
+# Refresh environment path in the current session to detect newly installed tools (like Node.js/npm)
+try {
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+} catch {
+    # Fallback if registry query fails
+}
+
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "       m0x-tune Platform Installer          " -ForegroundColor Cyan

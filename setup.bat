@@ -4,6 +4,17 @@ setlocal
 set "ROOT_DIR=%~dp0"
 cd /d "%ROOT_DIR%"
 
+REM Refresh environment PATH from registry to detect newly installed tools (Node.js/npm)
+for /f "tokens=2*" %%a in ('reg query "HKLM\System\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%b"
+for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USER_PATH=%%b"
+if defined SYS_PATH (
+    if defined USER_PATH (
+        set "PATH=%SYS_PATH%;%USER_PATH%"
+    ) else (
+        set "PATH=%SYS_PATH%"
+    )
+)
+
 if not exist ".tmp" mkdir ".tmp"
 if not exist ".pip_cache" mkdir ".pip_cache"
 if not exist ".uv_cache" mkdir ".uv_cache"
@@ -53,6 +64,13 @@ if %errorlevel% equ 0 (
             echo Warning: npm install failed in finetune-ui.
         ) else (
             echo Frontend dependencies successfully installed.
+            echo Building frontend...
+            call npm run build
+            if errorlevel 1 (
+                echo Warning: npm run build failed in finetune-ui.
+            ) else (
+                echo Frontend successfully built.
+            )
         )
         cd /d "%ROOT_DIR%"
     ) else (
