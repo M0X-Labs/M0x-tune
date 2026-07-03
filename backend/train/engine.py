@@ -168,6 +168,25 @@ def run_training_job(config: TrainingJobPayload) -> None:
     from  import save as _save
 
     base_model_path = resolve_path(config.local_model_path)
+    
+    if not base_model_path.exists():
+        raise FileNotFoundError(f"Base model path '{base_model_path}' does not exist.")
+        
+    # Auto-resolve model directory if the user pointed to a parent directory
+    if base_model_path.is_dir() and not (base_model_path / "config.json").exists():
+        model_subdirs = [d for d in base_model_path.iterdir() if d.is_dir() and (d / "config.json").exists()]
+        if len(model_subdirs) == 1:
+            print(f"Auto-resolved base model path to subdirectory: {model_subdirs[0]}")
+            base_model_path = model_subdirs[0]
+        else:
+            nested_model_dirs = []
+            for sub in base_model_path.iterdir():
+                if sub.is_dir():
+                    nested_model_dirs.extend([d for d in sub.iterdir() if d.is_dir() and (d / "config.json").exists()])
+            if len(nested_model_dirs) == 1:
+                print(f"Auto-resolved base model path to nested subdirectory: {nested_model_dirs[0]}")
+                base_model_path = nested_model_dirs[0]
+
     identity_dataset_path = resolve_path(config.identity_dataset_path)
     coding_dataset_path = resolve_path(config.coding_dataset_path)
     raw_lora_output_dir = resolve_path(config.raw_lora_output_dir)
@@ -280,7 +299,7 @@ def run_training_job(config: TrainingJobPayload) -> None:
             fp16=not torch.cuda.is_bf16_supported(),
             bf16=torch.cuda.is_bf16_supported(),
             logging_steps=10,
-            optim="adamw_8bit",
+            optim="paged_adamw_8bit",
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=config.seed,
