@@ -13,41 +13,16 @@ export TMP="$ROOT_DIR/.tmp"
 export HF_HOME="$ROOT_DIR/.hf_home"
 export HUGGINGFACE_HUB_CACHE="$ROOT_DIR/.hf_home/hub"
 
-find_compatible_python() {
-    for ver in python3.11 python3.12 python3.10 python3 python; do
-        if command -v "$ver" >/dev/null 2>&1; then
-            if "$ver" -c "import sys; sys.exit(0 if 3.10 <= sys.version_info.major + sys.version_info.minor/10 < 3.13 else 1)" >/dev/null 2>&1; then
-                echo "$ver"
-                return 0
-            fi
-        fi
-    done
-    return 1
-}
-
-COMPAT_PY=$(find_compatible_python || true)
-if [ -z "$COMPAT_PY" ]; then
-    echo "Python (3.10-3.12) not found. Attempting to install Python 3 automatically..."
-    if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get update && sudo apt-get install -y python3 python3-venv python3-dev
-    elif command -v yum >/dev/null 2>&1; then
-        sudo yum install -y python3 python3-devel
-    elif command -v brew >/dev/null 2>&1; then
-        brew install python@3.11
-    else
-        echo "Error: Could not install Python 3 automatically. Please install Python 3.10-3.12 manually."
-        exit 1
-    fi
-    COMPAT_PY=$(find_compatible_python || true)
-    if [ -z "$COMPAT_PY" ]; then
-        echo "Error: Python 3 was installed but could not be detected. Please ensure it is in your PATH."
-        exit 1
-    fi
+# Ensure uv is installed
+if ! command -v uv >/dev/null 2>&1; then
+  echo "uv package manager not found. Installing uv automatically..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
 fi
 
 if [[ ! -x ".venv/Scripts/python.exe" && ! -x ".venv/bin/python" ]]; then
-  echo "Creating local virtual environment using $COMPAT_PY..."
-  "$COMPAT_PY" -m venv .venv
+  echo "Creating local virtual environment with Python 3.12 using uv..."
+  uv venv --seed --python 3.12 .venv
 fi
 
 if [[ -x ".venv/Scripts/python.exe" ]]; then
