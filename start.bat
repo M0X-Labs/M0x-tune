@@ -66,11 +66,16 @@ timeout /t 2 /nobreak >nul
 
 echo Starting frontend server (Next.js) on port %PORT_FRONTEND%...
 cd finetune-ui
-if not exist ".next" (
-    echo Production build not found. Building frontend (this may take a minute)...
-    cmd /c "npm run build"
+where npm >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo Error: npm command not found! Please install Node.js and npm to run the web interface.
+) else (
+    if not exist ".next" (
+        echo Production build not found. Building frontend (this may take a minute)...
+        cmd /c "npm run build"
+    )
+    start "m0x-tune Frontend" cmd /k "npm run start -- -H 0.0.0.0 -p %PORT_FRONTEND% > "%ROOT_DIR%frontend.log" 2>&1"
 )
-start "m0x-tune Frontend" cmd /k "npm run start -- -H 0.0.0.0 -p %PORT_FRONTEND% > "%ROOT_DIR%frontend.log" 2>&1"
 cd ..
 
 echo.
