@@ -92,6 +92,10 @@ if ! command -v npm >/dev/null 2>&1; then
   echo "Error: npm command not found! Please install Node.js (v18+) and npm to run the web interface."
   cd ..
 else
+  if [ ! -d "node_modules" ]; then
+    echo "node_modules not found. Installing frontend dependencies (this may take a minute)..."
+    npm install
+  fi
   if [ ! -d ".next" ]; then
     echo "Production build not found. Building frontend (this may take a minute)..."
     npm run build

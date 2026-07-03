@@ -70,6 +70,10 @@ where npm >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     echo Error: npm command not found! Please install Node.js and npm to run the web interface.
 ) else (
+    if not exist "node_modules" (
+        echo node_modules not found. Installing frontend dependencies (this may take a minute)...
+        cmd /c "npm install"
+    )
     if not exist ".next" (
         echo Production build not found. Building frontend (this may take a minute)...
         cmd /c "npm run build"
