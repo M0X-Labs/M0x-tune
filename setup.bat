@@ -52,7 +52,7 @@ echo Installing CUDA-aware dependencies...
 ".venv\Scripts\python.exe" "scripts\install_deps.py"
 if errorlevel 1 exit /b 1
 
-echo Checking for frontend dependencies (Node.js/npm)...
+echo Checking for frontend dependencies - Node.js/npm...
 where node >nul 2>nul
 if %errorlevel% equ 0 (
     where npm >nul 2>nul
@@ -77,7 +77,7 @@ if %errorlevel% equ 0 (
         echo Warning: npm was not found. Please install npm to run the web interface.
     )
 ) else (
-    echo Warning: Node.js was not found. Please install Node.js (v18+) to run the web interface.
+    echo Warning: Node.js was not found. Please install Node.js v18 or higher to run the web interface.
 )
 
 echo Running smoke test...
