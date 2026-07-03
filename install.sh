@@ -32,7 +32,26 @@ if [ -d "$TARGET_DIR" ]; then
     echo "${C_WARN}Directory '$TARGET_DIR' already exists.${C_RST}"
     echo "Updating the existing repository..."
     cd "$TARGET_DIR"
-    git pull origin main
+    if ! git pull origin main; then
+        echo ""
+        echo "${C_WARN}Warning: git pull failed (likely due to local changes like executable permissions or edits).${C_RST}"
+        if [ -t 0 ]; then
+            printf "Would you like to overwrite your local changes and update? [y/N]: "
+            read -r overwrite_response
+            case "$overwrite_response" in
+                [yY]*)
+                    echo "Overwriting local changes and updating..."
+                    git reset --hard HEAD
+                    git pull origin main
+                    ;;
+                *)
+                    echo "Skipping update of local files. Continuing with your existing files..."
+                    ;;
+            esac
+        else
+            echo "Non-interactive environment detected. Skipping update of local files."
+        fi
+    fi
 else
     echo "${C_DIM}Cloning m0x-tune repository...${C_RST}"
     git clone https://github.com/M0X-Labs/M0x-tune.git "$TARGET_DIR"
