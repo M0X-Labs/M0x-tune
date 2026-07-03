@@ -186,12 +186,20 @@ def run_training_job(config: TrainingJobPayload) -> None:
         f"Gradient checkpointing: {config.gradient_checkpointing}"
     )
 
+    # Avoid dispatching parts of 4-bit model to CPU/disk which fails in bitsandbytes.
+    # Force single GPU to load the model fully on CUDA.
+    if torch.cuda.is_available():
+        device_map = "auto" if torch.cuda.device_count() > 1 else "cuda:0"
+    else:
+        device_map = "cpu"
+
     from_pretrained_kwargs: dict[str, Any] = {
         "model_name": str(base_model_path),
         "max_seq_length": config.max_seq_length,
         "dtype": None,
         "load_in_4bit": config.use_4bit,
         "trust_remote_code": True,
+        "device_map": device_map,
     }
     if config.rope_scaling:
         from_pretrained_kwargs["rope_scaling"] = config.rope_scaling
