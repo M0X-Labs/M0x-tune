@@ -88,13 +88,18 @@ sleep 2
 
 echo "Starting frontend server (Next.js) on port $PORT_FRONTEND..."
 cd finetune-ui
-if [ ! -d ".next" ]; then
-  echo "Production build not found. Building frontend (this may take a minute)..."
-  npm run build
+if ! command -v npm >/dev/null 2>&1; then
+  echo "Error: npm command not found! Please install Node.js (v18+) and npm to run the web interface."
+  cd ..
+else
+  if [ ! -d ".next" ]; then
+    echo "Production build not found. Building frontend (this may take a minute)..."
+    npm run build
+  fi
+  npm run start -- -H 0.0.0.0 -p "$PORT_FRONTEND" > "$ROOT_DIR/frontend.log" 2>&1 &
+  FRONTEND_PID=$!
+  cd ..
 fi
-npm run start -- -H 0.0.0.0 -p "$PORT_FRONTEND" > "$ROOT_DIR/frontend.log" 2>&1 &
-FRONTEND_PID=$!
-cd ..
 
 echo ""
 echo "============================================"
