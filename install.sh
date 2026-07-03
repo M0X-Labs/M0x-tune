@@ -136,23 +136,8 @@ echo "  Backend API:   http://localhost:8000"
 echo "============================================="
 echo ""
 
-# Ask the user if they want to start the platform immediately
-if [ -t 0 ]; then
-    printf "Do you want to start the m0x-tune platform now? [Y/n]: "
-    read -r response
-    case "$response" in
-        [nN]*)
-            echo ""
-            echo "To start it manually later, run:"
-            echo "  cd $TARGET_DIR && ./start.sh"
-            ;;
-        *)
-            echo ""
-            echo "Starting m0x-tune..."
-            ./start.sh
-            ;;
-    esac
-else
-    echo "To start the platform, run:"
-    echo "  cd $TARGET_DIR && ./start.sh"
-fi
+echo "Starting m0x-tune..."
+echo "To start it manually later, run:"
+echo "  ./start.sh"
+echo ""
+./start.sh

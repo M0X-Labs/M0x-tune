@@ -27,9 +27,22 @@ find_compatible_python() {
 
 COMPAT_PY=$(find_compatible_python || true)
 if [ -z "$COMPAT_PY" ]; then
-    echo "Error: No compatible Python (3.10-3.12) detected on your system."
-    echo "Please install Python 3.11 or 3.12 and retry."
-    exit 1
+    echo "Python (3.10-3.12) not found. Attempting to install Python 3.11 automatically..."
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y python3.11 python3.11-devel
+    elif command -v brew >/dev/null 2>&1; then
+        brew install python@3.11
+    else
+        echo "Error: Could not install Python 3.11 automatically. Please install Python 3.11 or 3.12 manually."
+        exit 1
+    fi
+    COMPAT_PY=$(find_compatible_python || true)
+    if [ -z "$COMPAT_PY" ]; then
+        echo "Error: Python 3.11 was installed but could not be detected. Please ensure it is in your PATH."
+        exit 1
+    fi
 fi
 
 if [[ ! -x ".venv/Scripts/python.exe" && ! -x ".venv/bin/python" ]]; then

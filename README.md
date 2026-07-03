@@ -81,16 +81,28 @@ The m0x-tune platform features a modern, intuitive web interface built with Next
 
 ### Installation
 
-#### Windows
+You can install and configure the platform automatically with a single command:
 
+#### Windows (PowerShell)
+```powershell
+irm https://tune.m0x.in/install.ps1 | iex
+```
+
+#### Linux/Mac (Bash)
+```bash
+curl -fsSL https://tune.m0x.in/install.sh | sh
+```
+
+#### Manual Installation
+
+##### Windows
 1. Clone or download this repository
 2. Run the setup script:
    ```cmd
    setup.bat
    ```
 
-#### Linux/Mac
-
+##### Linux/Mac
 1. Clone or download this repository
 2. Run the setup script:
    ```bash
