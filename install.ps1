@@ -205,18 +205,8 @@ Write-Host "  Backend API:   http://localhost:8000"
 Write-Host "============================================"
 Write-Host ""
 
-$startNow = "y"
-try {
-    $startNow = Read-Host "Do you want to start the m0x-tune platform now? (Y/n)"
-} catch {
-    $startNow = "n"
-}
-
-if ($startNow -eq "" -or $startNow -match "^[yY]") {
-    Write-Host "Starting m0x-tune..." -ForegroundColor Green
-    cmd.exe /c start.bat
-} else {
-    Write-Host "To start it manually later, run:"
-    Write-Host "  cd $TargetDir"
-    Write-Host "  .\start.bat"
-}
+Write-Host "Starting m0x-tune..." -ForegroundColor Green
+Write-Host "To start it manually later, run:" -ForegroundColor Gray
+Write-Host "  .\start.bat" -ForegroundColor Gray
+Write-Host "" -ForegroundColor Gray
+cmd.exe /c start.bat
