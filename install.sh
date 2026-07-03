@@ -22,9 +22,18 @@ echo ""
 
 # Check for git
 if ! command -v git >/dev/null 2>&1; then
-    echo "${C_ERR}Error: git is not installed or not in your PATH.${C_RST}"
-    echo "Please install Git and try again."
-    exit 1
+    echo "${C_WARN}Git not found. Attempting to install Git automatically...${C_RST}"
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y git
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y git
+    elif command -v brew >/dev/null 2>&1; then
+        brew install git
+    else
+        echo "${C_ERR}Error: git is not installed or not in your PATH.${C_RST}"
+        echo "Please install Git and try again."
+        exit 1
+    fi
 fi
 
 TARGET_DIR="m0x-tune"
@@ -57,6 +66,26 @@ else
     git clone https://github.com/M0X-Labs/M0x-tune.git "$TARGET_DIR"
     cd "$TARGET_DIR"
 fi
+
+# Check for Node.js and npm and install if missing
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    echo "${C_WARN}Node.js or npm not found. Installing Node.js automatically...${C_RST}"
+    if command -v apt-get >/dev/null 2>&1; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    elif command -v yum >/dev/null 2>&1; then
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+        sudo yum install -y nodejs
+    elif command -v brew >/dev/null 2>&1; then
+        brew install node
+    else
+        echo "${C_WARN}Warning: Could not install Node.js automatically. Please install Node.js (v18+) manually.${C_RST}"
+    fi
+fi
+
+# Refresh path in case they were just installed
+[ -f ~/.profile ] && . ~/.profile
+[ -f ~/.bashrc ] && . ~/.bashrc
 
 # Run the setup script
 if [ -f "setup.sh" ]; then

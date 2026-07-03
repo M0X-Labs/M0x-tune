@@ -21,9 +21,33 @@ Write-Host ""
 # Check for git
 $gitCheck = Get-Command git -ErrorAction SilentlyContinue
 if (-not $gitCheck) {
-    Write-Host "Error: git is not installed or not in your PATH." -ForegroundColor Red
-    Write-Host "Please install Git (https://git-scm.com) and try again."
-    exit 1
+    Write-Host "Git not found. Installing Git automatically..." -ForegroundColor Yellow
+    $wingetCheck = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetCheck) {
+        Write-Host "Using winget to install Git..." -ForegroundColor Gray
+        try {
+            Start-Process winget -ArgumentList "install Git.Git --silent --accept-package-agreements --accept-source-agreements" -Wait
+        } catch {
+            $wingetCheck = $false
+        }
+    }
+    if (-not $wingetCheck) {
+        Write-Host "Downloading Git installer..." -ForegroundColor Gray
+        $exePath = "$env:TEMP\Git-2.43.0-64-bit.exe"
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri "https://github.com/git-for-windows/git/releases/download/v2.43.0.windows.1/Git-2.43.0-64-bit.exe" -OutFile $exePath
+            Write-Host "Installing Git silently..." -ForegroundColor Gray
+            Start-Process $exePath -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP-" -Wait
+        } catch {
+            Write-Host "Failed to install Git automatically. Please install Git manually from https://git-scm.com" -ForegroundColor Red
+            exit 1
+        }
+    }
+    # Refresh PATH to detect Git
+    try {
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    } catch {}
 }
 
 # Determine target directory
@@ -53,6 +77,37 @@ if (Test-Path $TargetDir) {
     Write-Host "Cloning m0x-tune repository..." -ForegroundColor Gray
     git clone https://github.com/M0X-Labs/M0x-tune.git $TargetDir
     Set-Location $TargetDir
+}
+
+# Check for Node.js/npm and install if missing
+$nodeCheck = Get-Command node -ErrorAction SilentlyContinue
+if (-not $nodeCheck) {
+    Write-Host "Node.js not found. Installing Node.js automatically..." -ForegroundColor Yellow
+    $wingetCheck = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetCheck) {
+        Write-Host "Using winget to install Node.js..." -ForegroundColor Gray
+        try {
+            Start-Process winget -ArgumentList "install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements" -Wait
+        } catch {
+            $wingetCheck = $false
+        }
+    }
+    if (-not $wingetCheck) {
+        Write-Host "Downloading Node.js MSI installer..." -ForegroundColor Gray
+        $msiPath = "$env:TEMP\node-v20.18.0-x64.msi"
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi" -OutFile $msiPath
+            Write-Host "Installing Node.js silently..." -ForegroundColor Gray
+            Start-Process msiexec.exe -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait
+        } catch {
+            Write-Host "Failed to install Node.js automatically. Please install Node.js manually from https://nodejs.org" -ForegroundColor Red
+        }
+    }
+    # Refresh PATH to pick up newly installed Node.js
+    try {
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    } catch {}
 }
 
 # Run the setup script
