@@ -41,6 +41,7 @@ if [ -d "$TARGET_DIR" ]; then
     echo "${C_WARN}Directory '$TARGET_DIR' already exists.${C_RST}"
     echo "Updating the existing repository..."
     cd "$TARGET_DIR"
+    git config core.filemode false
     if ! git pull origin main; then
         echo ""
         echo "${C_WARN}Warning: git pull failed (likely due to local changes like executable permissions or edits).${C_RST}"
@@ -65,6 +66,7 @@ else
     echo "${C_DIM}Cloning m0x-tune repository...${C_RST}"
     git clone https://github.com/M0X-Labs/M0x-tune.git "$TARGET_DIR"
     cd "$TARGET_DIR"
+    git config core.filemode false
 fi
 
 # Check for Python (3.10 - 3.12 CPython) and install if missing
@@ -82,15 +84,15 @@ find_compatible_python() {
 
 COMPAT_PY=$(find_compatible_python || true)
 if [ -z "$COMPAT_PY" ]; then
-    echo "${C_WARN}Python (3.10-3.12) not found. Attempting to install Python 3.11 automatically...${C_RST}"
+    echo "${C_WARN}Python (3.10-3.12) not found. Attempting to install Python 3 automatically...${C_RST}"
     if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+        sudo apt-get update && sudo apt-get install -y python3 python3-venv python3-dev
     elif command -v yum >/dev/null 2>&1; then
-        sudo yum install -y python3.11 python3.11-devel
+        sudo yum install -y python3 python3-devel
     elif command -v brew >/dev/null 2>&1; then
         brew install python@3.11
     else
-        echo "${C_WARN}Warning: Could not install Python 3.11 automatically. Please install Python 3.11 manually.${C_RST}"
+        echo "${C_WARN}Warning: Could not install Python 3 automatically. Please install Python 3.10-3.12 manually.${C_RST}"
     fi
 fi
 

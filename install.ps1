@@ -55,6 +55,7 @@ $TargetDir = "m0x-tune"
 if (Test-Path $TargetDir) {
     Write-Host "Directory '$TargetDir' already exists. Updating existing repository..." -ForegroundColor Yellow
     Set-Location $TargetDir
+    git config core.filemode false
     git pull origin main
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
@@ -77,6 +78,7 @@ if (Test-Path $TargetDir) {
     Write-Host "Cloning m0x-tune repository..." -ForegroundColor Gray
     git clone https://github.com/M0X-Labs/M0x-tune.git $TargetDir
     Set-Location $TargetDir
+    git config core.filemode false
 }
 
 # Check for Python (3.10 - 3.12 CPython)
