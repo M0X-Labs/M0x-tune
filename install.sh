@@ -67,6 +67,33 @@ else
     cd "$TARGET_DIR"
 fi
 
+# Check for Python (3.10 - 3.12 CPython) and install if missing
+find_compatible_python() {
+    for ver in python3.11 python3.12 python3.10 python3 python; do
+        if command -v "$ver" >/dev/null 2>&1; then
+            if "$ver" -c "import sys; sys.exit(0 if 3.10 <= sys.version_info.major + sys.version_info.minor/10 < 3.13 else 1)" >/dev/null 2>&1; then
+                echo "$ver"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+COMPAT_PY=$(find_compatible_python || true)
+if [ -z "$COMPAT_PY" ]; then
+    echo "${C_WARN}Python (3.10-3.12) not found. Attempting to install Python 3.11 automatically...${C_RST}"
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y python3.11 python3.11-devel
+    elif command -v brew >/dev/null 2>&1; then
+        brew install python@3.11
+    else
+        echo "${C_WARN}Warning: Could not install Python 3.11 automatically. Please install Python 3.11 manually.${C_RST}"
+    fi
+fi
+
 # Check for Node.js and npm and install if missing
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
     echo "${C_WARN}Node.js or npm not found. Installing Node.js automatically...${C_RST}"

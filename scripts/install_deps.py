@@ -205,12 +205,41 @@ def main() -> int:
 
     hardware = load_hardware_info()
     cuda_tag = hardware.get("selected_cuda_tag", "cpu")
+    
+    if cuda_tag == "rocm":
+        rocm_gfx_arch = hardware.get("rocm_gfx_arch")
+        arch_family_map = {
+            "gfx1201": "gfx120X-all",
+            "gfx1200": "gfx120X-all",
+            "gfx1151": "gfx1151",
+            "gfx1150": "gfx1150",
+            "gfx1103": "gfx110X-all",
+            "gfx1102": "gfx110X-all",
+            "gfx1101": "gfx110X-all",
+            "gfx1100": "gfx110X-all",
+            "gfx90a": "gfx90a",
+            "gfx908": "gfx908",
+        }
+        arch_family = arch_family_map.get(rocm_gfx_arch) if rocm_gfx_arch else None
+        if arch_family:
+            TORCH_PROFILES["rocm"] = {
+                "index_url": f"https://repo.amd.com/rocm/whl/{arch_family}",
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "torchaudio",
+                ]
+            }
+        else:
+            print(f"Warning: AMD GFX Arch '{rocm_gfx_arch}' is not supported by repo.amd.com. Falling back to CPU target.")
+            cuda_tag = "cpu"
+
     if cuda_tag not in TORCH_PROFILES:
         cuda_tag = "cpu"
 
     ensure_uv_installed()
     
-    print(f"Resolved CUDA target: {cuda_tag}")
+    print(f"Resolved target: {cuda_tag}")
     print(f"Detected GPU: {hardware.get('gpu_name') or 'none'}")
 
     if args.dry_run:

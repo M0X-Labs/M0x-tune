@@ -79,6 +79,81 @@ if (Test-Path $TargetDir) {
     Set-Location $TargetDir
 }
 
+# Check for Python (3.10 - 3.12 CPython)
+function Find-CompatiblePython {
+    $minors = @("3.11", "3.12", "3.10")
+    $condaSkip = '(?i)(conda|miniconda|anaconda|miniforge|mambaforge)'
+    foreach ($pyLauncher in @(Get-Command py -All -CommandType Application -ErrorAction SilentlyContinue)) {
+        if ($pyLauncher.Source -match $condaSkip) { continue }
+        foreach ($minor in $minors) {
+            try {
+                $out = & $pyLauncher.Source "-$minor" --version 2>&1 | Out-String
+                if ($out -match "Python (3\.(10|11|12))\.\d+") {
+                    $ver = $Matches[1]
+                    $resolvedExe = (& $pyLauncher.Source "-$minor" -c "import sys; print(sys.executable)" 2>$null | Out-String).Trim()
+                    if ($resolvedExe -and (Test-Path $resolvedExe) -and $resolvedExe -notmatch $condaSkip) {
+                        return @{ Version = $ver; Path = $resolvedExe }
+                    }
+                }
+            } catch {}
+        }
+    }
+    foreach ($name in @("python", "python3")) {
+        foreach ($cmd in @(Get-Command $name -All -ErrorAction SilentlyContinue)) {
+            if (-not $cmd.Source) { continue }
+            if ($cmd.Source -like "*\WindowsApps\*") { continue }
+            if ($cmd.Source -match $condaSkip) { continue }
+            try {
+                $out = & $cmd.Source --version 2>&1 | Out-String
+                if ($out -match "Python (3\.(10|11|12))\.\d+") {
+                    return @{ Version = $Matches[1]; Path = $cmd.Source }
+                }
+            } catch {}
+        }
+    }
+    return $null
+}
+
+$pyInfo = Find-CompatiblePython
+if (-not $pyInfo) {
+    Write-Host "Python (3.10-3.12) not found. Installing Python 3.11 automatically..." -ForegroundColor Yellow
+    $wingetCheck = Get-Command winget -ErrorAction SilentlyContinue
+    $installed = $false
+    if ($wingetCheck) {
+        Write-Host "Using winget to install Python 3.11..." -ForegroundColor Gray
+        try {
+            Start-Process winget -ArgumentList "install Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements" -Wait
+            try {
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            } catch {}
+            $pyInfo = Find-CompatiblePython
+            if ($pyInfo) { $installed = $true }
+        } catch {
+            $wingetCheck = $false
+        }
+    }
+    if (-not $installed) {
+        Write-Host "Downloading Python 3.11 installer..." -ForegroundColor Gray
+        $exePath = "$env:TEMP\python-3.11.9-amd64.exe"
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" -OutFile $exePath
+            Write-Host "Installing Python 3.11 silently..." -ForegroundColor Gray
+            Start-Process $exePath -ArgumentList "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 InstallLauncherAllUsers=0 Include_pip=1 AssociateFiles=0 Shortcuts=0" -Wait
+            try {
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            } catch {}
+            $pyInfo = Find-CompatiblePython
+            if ($pyInfo) { $installed = $true }
+        } catch {
+            Write-Host "Failed to install Python automatically. Please install Python 3.11 or 3.12 manually from https://python.org" -ForegroundColor Red
+            exit 1
+        } finally {
+            if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 # Check for Node.js/npm and install if missing
 $nodeCheck = Get-Command node -ErrorAction SilentlyContinue
 if (-not $nodeCheck) {

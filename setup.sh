@@ -13,9 +13,28 @@ export TMP="$ROOT_DIR/.tmp"
 export HF_HOME="$ROOT_DIR/.hf_home"
 export HUGGINGFACE_HUB_CACHE="$ROOT_DIR/.hf_home/hub"
 
+find_compatible_python() {
+    for ver in python3.11 python3.12 python3.10 python3 python; do
+        if command -v "$ver" >/dev/null 2>&1; then
+            if "$ver" -c "import sys; sys.exit(0 if 3.10 <= sys.version_info.major + sys.version_info.minor/10 < 3.13 else 1)" >/dev/null 2>&1; then
+                echo "$ver"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+COMPAT_PY=$(find_compatible_python || true)
+if [ -z "$COMPAT_PY" ]; then
+    echo "Error: No compatible Python (3.10-3.12) detected on your system."
+    echo "Please install Python 3.11 or 3.12 and retry."
+    exit 1
+fi
+
 if [[ ! -x ".venv/Scripts/python.exe" && ! -x ".venv/bin/python" ]]; then
-  echo "Creating local virtual environment..."
-  python3 -m venv .venv
+  echo "Creating local virtual environment using $COMPAT_PY..."
+  "$COMPAT_PY" -m venv .venv
 fi
 
 if [[ -x ".venv/Scripts/python.exe" ]]; then
