@@ -25,6 +25,9 @@ class PlaygroundInferenceManager:
         def _load():
             try:
                 # Lazy imports of heavy libraries
+                from backend.gemma4_patch import apply_gemma4_patch
+                apply_gemma4_patch()
+
                 from  import FastLanguageModel
                 import torch
 
@@ -35,16 +38,22 @@ class PlaygroundInferenceManager:
                 else:
                     resolved_path = candidate
 
-                print(f"[PLAYGROUND] Loading model from {resolved_path} in 4-bit mode...")
+                has_cuda = torch.cuda.is_available()
+                load_in_4bit = True if has_cuda else False
+                device_map = "cuda:0" if has_cuda else "cpu"
+
+                print(f"[PLAYGROUND] Loading model from {resolved_path} (4-bit: {load_in_4bit}, device: {device_map})...")
                 
-                # Load with  in 4-bit
+                # Load with 
                 model, tokenizer = FastLanguageModel.from_pretrained(
                     model_name=str(resolved_path),
                     max_seq_length=2048,
                     dtype=None,
-                    load_in_4bit=True,
+                    load_in_4bit=load_in_4bit,
+                    device_map=device_map,
                 )
-                FastLanguageModel.for_inference(model)  # Enable 2x faster inference in 
+                if has_cuda:
+                    FastLanguageModel.for_inference(model)  # Enable 2x faster inference in 
                 
                 with self.lock:
                     self.model = model
@@ -92,8 +101,12 @@ class PlaygroundInferenceManager:
             tokenizer = self.tokenizer
 
         try:
-            # Format custom template to align with model's fine-tuning bos and turn structure:
-            formatted_prompt = f"<bos><|turn>user\n{prompt}<turn|>\n<|turn>model\n"
+            # Format dynamically using the model's tokenizer chat template if available, otherwise fallback
+            try:
+                messages = [{"role": "user", "content": prompt}]
+                formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            except Exception:
+                formatted_prompt = f"<bos><|turn>user\n{prompt}<turn|>\n<|turn>model\n"
             
             inputs = tokenizer([formatted_prompt], return_tensors="pt").to("cuda")
             streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, clean_up_tokenization_spaces=True)
