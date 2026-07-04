@@ -83,9 +83,9 @@ def ensure_uv_installed() -> None:
         # Since pip is usually pre-installed on Colab/Kaggle anyway, we can safe-ignore this.
         pass
 
-    # Install setuptools first - required for building packages like xformers
+    # Install and upgrade pip, setuptools, and wheel first - required for building modern packages
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "setuptools", "wheel"],
+        [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
         cwd=PROJECT_ROOT,
         check=True,
     )
