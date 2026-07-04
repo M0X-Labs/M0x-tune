@@ -17,6 +17,9 @@ os.environ["TMP"] = str(Path(__file__).parent / ".tmp")
 Path(os.environ["TEMP"]).mkdir(exist_ok=True)
 Path(os.environ["PIP_CACHE_DIR"]).mkdir(exist_ok=True)
 
+from backend.gemma4_patch import apply_gemma4_patch
+apply_gemma4_patch()
+
 import torch
 from unsloth import FastLanguageModel
 from unsloth import save as unsloth_save

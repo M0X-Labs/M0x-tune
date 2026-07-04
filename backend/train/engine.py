@@ -160,6 +160,9 @@ def formatting_prompts_func(examples: dict[str, list[str]]) -> dict[str, list[st
 def run_training_job(config: TrainingJobPayload) -> None:
     prepare_runtime_environment()
 
+    from backend.gemma4_patch import apply_gemma4_patch
+    apply_gemma4_patch()
+
     import torch
     # Clean up GPU memory and run garbage collection before starting
     import gc
@@ -210,30 +213,47 @@ def run_training_job(config: TrainingJobPayload) -> None:
     )
 
     # Avoid dispatching parts of 4-bit model to CPU/disk which fails in bitsandbytes.
-    # Force single GPU to load the model fully on CUDA.
+    # Force single GPU to load the model fully on CUDA (Unsloth only supports single GPU training).
     if torch.cuda.is_available():
-        device_map = "auto" if torch.cuda.device_count() > 1 else "cuda:0"
+        device_map = "cuda:0"
+        load_in_4bit = config.use_4bit
     else:
         device_map = "cpu"
+        load_in_4bit = False
 
     from_pretrained_kwargs: dict[str, Any] = {
         "model_name": str(base_model_path),
         "max_seq_length": config.max_seq_length,
         "dtype": None,
-        "load_in_4bit": config.use_4bit,
+        "load_in_4bit": load_in_4bit,
         "trust_remote_code": True,
         "device_map": device_map,
     }
-    if config.rope_scaling:
+    if config.rope_scaling and torch.cuda.is_available():
         from_pretrained_kwargs["rope_scaling"] = config.rope_scaling
 
     model, tokenizer = FastLanguageModel.from_pretrained(**from_pretrained_kwargs)
+
+    # Dynamic prompts formatting using the model tokenizer's chat template
+    def formatting_prompts_func(examples: dict[str, list[str]]) -> dict[str, list[str]]:
+        texts: list[str] = []
+        for instruction, output in zip(examples["instruction"], examples["output"]):
+            try:
+                messages = [
+                    {"role": "user", "content": instruction},
+                    {"role": "assistant", "content": output}
+                ]
+                text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            except Exception:
+                text = f"<bos><|turn>user\n{instruction}<turn|>\n<|turn>model\n{output}<turn|>"
+            texts.append(text)
+        return {"text": texts}
 
     print(f"Configuring Low-Rank Adaptation (LoRA) Layers [R={config.lora_r}, Alpha={config.lora_alpha}]...")
     model = FastLanguageModel.get_peft_model(
         model,
         r=config.lora_r,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=None,  # Dynamic LoRA target detection for any model family
         lora_alpha=config.lora_alpha,
         lora_dropout=0,
         bias="none",
@@ -293,6 +313,13 @@ def run_training_job(config: TrainingJobPayload) -> None:
     # (a TrainingArguments subclass), and the tokenizer/processor kwarg was renamed to
     # `processing_class`. This mirrors Unsloth's own reference training script
     # (unsloth-cli.py) exactly, and avoids a hard TypeError at trainer construction.
+    has_bf16 = False
+    if torch.cuda.is_available():
+        try:
+            has_bf16 = torch.cuda.is_bf16_supported()
+        except Exception:
+            pass
+
     trainer = SFTTrainer(
         model=model,
         processing_class=tokenizer,
@@ -300,12 +327,12 @@ def run_training_job(config: TrainingJobPayload) -> None:
         args=SFTConfig(
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
-            gradient_checkpointing=True,
+            gradient_checkpointing=False,  # Let Unsloth's model-level gradient checkpointing manage this
             warmup_steps=config.warmup_steps,
             max_steps=config.max_steps,
             learning_rate=config.learning_rate,
-            fp16=not torch.cuda.is_bf16_supported(),
-            bf16=torch.cuda.is_bf16_supported(),
+            fp16=not has_bf16,
+            bf16=has_bf16,
             logging_steps=10,
             optim="paged_adamw_8bit",
             weight_decay=0.01,
