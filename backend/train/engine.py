@@ -167,8 +167,7 @@ def run_training_job(config: TrainingJobPayload) -> None:
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     from datasets import concatenate_datasets, load_dataset
-    from transformers import TrainingArguments
-    from trl import SFTTrainer
+    from trl import SFTConfig, SFTTrainer
     from unsloth import FastLanguageModel
     from unsloth import save as unsloth_save
 
@@ -239,6 +238,7 @@ def run_training_job(config: TrainingJobPayload) -> None:
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing=config.gradient_checkpointing,
+        random_state=config.seed,
     )
 
     print("Loading local identity tracking dataset...")
@@ -286,15 +286,18 @@ def run_training_job(config: TrainingJobPayload) -> None:
     dataset = concatenate_datasets([identity_mapped, combined_coding])
     dataset = dataset.map(formatting_prompts_func, batched=True)
 
+    # NOTE: modern trl (>=0.12ish, which our unpinned `trl` dependency will resolve to)
+    # removed the old pattern of passing `tokenizer=`, `dataset_text_field=`,
+    # `max_seq_length=`, `dataset_num_proc=`, and `packing=` directly as SFTTrainer(...)
+    # constructor kwargs alongside a plain TrainingArguments. They now live on SFTConfig
+    # (a TrainingArguments subclass), and the tokenizer/processor kwarg was renamed to
+    # `processing_class`. This mirrors Unsloth's own reference training script
+    # (unsloth-cli.py) exactly, and avoids a hard TypeError at trainer construction.
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=dataset,
-        dataset_text_field="text",
-        max_seq_length=config.max_seq_length,
-        dataset_num_proc=config.dataset_num_proc,
-        packing=config.packing,
-        args=TrainingArguments(
+        args=SFTConfig(
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
             gradient_checkpointing=True,
@@ -310,6 +313,10 @@ def run_training_job(config: TrainingJobPayload) -> None:
             seed=config.seed,
             output_dir=config.output_dir,
             save_strategy="no",
+            dataset_text_field="text",
+            max_length=config.max_seq_length,
+            dataset_num_proc=config.dataset_num_proc,
+            packing=config.packing,
         ),
     )
 

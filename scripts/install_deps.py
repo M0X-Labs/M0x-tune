@@ -10,53 +10,49 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DETECT_SCRIPT = PROJECT_ROOT / "scripts" / "detect_hardware.py"
 
+# Unlike our previous approach (pinning e.g. "torch==2.6.0+cu124"), we deliberately
+# leave the torch version UNPINNED here and only pick the CUDA index. This mirrors
+# what Unsloth's own official installer does (see Get-TorchIndexUrl / "install PyTorch
+# first" in unsloth/install.ps1): pointing at the right https://download.pytorch.org/whl/cuXXX
+# index and letting pip/uv resolve whatever version that index actually publishes a wheel
+# for on the running Python. A hardcoded exact version can simply not exist for newer
+# Python releases (e.g. no cp313 build of that exact torch+cuda combo) and hard-fails
+# instead of silently picking a version that does exist.
 TORCH_PROFILES: dict[str, dict[str, Any]] = {
-    "cu130": {
-        # CUDA 13.x falls back to cu124 since PyTorch doesn't have cu130 wheels yet
-        # CUDA is backward compatible, so cu124 wheels work with CUDA 13.x drivers
-        "index_url": "https://download.pytorch.org/whl/cu124",
-        "packages": [
-            "torch==2.6.0+cu124",
-            # xformers omitted - let unsloth handle it or skip if no compatible wheel
-        ],
-    },
-    "cu124": {
-        "index_url": "https://download.pytorch.org/whl/cu124",
-        "packages": [
-            "torch==2.6.0+cu124",
-            # xformers omitted - let unsloth handle it or skip if no compatible wheel
-        ],
-    },
-    "cu121": {
-        "index_url": "https://download.pytorch.org/whl/cu121",
-        "packages": [
-            "torch==2.4.0+cu121",
-            # xformers omitted - let unsloth handle it or skip if no compatible wheel
-        ],
-    },
-    "cpu": {
-        "index_url": "https://pypi.org/simple",
-        "packages": [
-            "torch",
-        ],
-    },
+    "cu130": {"index_url": "https://download.pytorch.org/whl/cu130", "packages": ["torch"]},
+    "cu128": {"index_url": "https://download.pytorch.org/whl/cu128", "packages": ["torch"]},
+    "cu126": {"index_url": "https://download.pytorch.org/whl/cu126", "packages": ["torch"]},
+    "cu124": {"index_url": "https://download.pytorch.org/whl/cu124", "packages": ["torch"]},
+    "cu121": {"index_url": "https://download.pytorch.org/whl/cu121", "packages": ["torch"]},
+    "cu118": {"index_url": "https://download.pytorch.org/whl/cu118", "packages": ["torch"]},
+    "cpu": {"index_url": "https://pypi.org/simple", "packages": ["torch"]},
 }
 
 COMMON_PACKAGES = [
-    "trl",
-    "peft",
-    "accelerate",
-    "bitsandbytes",
-    "datasets",
-    "huggingface_hub",
-    "transformers",
+    # bitsandbytes ships prebuilt wheels for every platform (no compiler needed), so it's
+    # safe to pin directly. Version range matches what Unsloth's own pyproject.toml
+    # requires (known-bad 0.46.0/0.48.0 releases excluded).
+    "bitsandbytes>=0.45.5,!=0.46.0,!=0.48.0",
     "uvicorn[standard]",  # Required for running the FastAPI backend
     "fastapi",  # Required for the backend API
     "pydantic",  # Required for data validation
     "python-multipart",  # Required for file uploads
     "aiofiles",  # Required for async file operations
     "pyarrow",  # Required for parquet file support
-    "unsloth[windows] @ git+https://github.com/unslothai/unsloth.git",
+    # IMPORTANT: use the `huggingface` extra, NOT `windows`/`cuXXX-torchYYY`.
+    # `unsloth[windows]` (see unsloth/pyproject.toml) pins a *loose*,
+    # wheel-unconstrained "xformers>=0.0.22.post7" on win32. When no prebuilt
+    # xformers wheel matches the installed (python, torch, cuda) combo -- which
+    # is exactly what happens on Python 3.13 with a plain `torch` install -- pip/uv
+    # silently falls back to compiling xformers from source, which requires a fully
+    # configured MSVC + Windows SDK toolchain and fails otherwise (this is the
+    # "cannot open include file: 'stddef.h'" error from a previous install attempt).
+    # `unsloth[huggingface]` pulls transformers/trl/peft/accelerate/datasets/etc.
+    # (Unsloth's own tested-compatible version ranges) WITHOUT requiring xformers at
+    # all -- Unsloth transparently falls back to PyTorch's built-in SDPA attention
+    # when xformers isn't importable, so training still works correctly, just without
+    # that one optional attention-kernel speedup.
+    "unsloth[huggingface] @ git+https://github.com/unslothai/unsloth.git",
 ]
 
 

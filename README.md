@@ -129,6 +129,25 @@ The platform will be available at:
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 
+#### Changing Ports
+
+By default, the platform runs the Frontend on port `3000` and the Backend API on port `8000`. You can customize these ports using command-line arguments:
+
+##### Windows
+```cmd
+start.bat --frontend-port 3001 --backend-port 8001
+```
+
+##### Linux/Mac
+```bash
+./start.sh --frontend-port 3001 --backend-port 8001
+```
+
+Alternatively on Linux/Mac, you can define the ports using environment variables:
+```bash
+PORT_FRONTEND=3001 PORT_BACKEND=8001 ./start.sh
+```
+
 ## Project Structure
 
 ```
@@ -375,6 +394,51 @@ The training engine includes specialized functions for:
 - Reduced frustration with automated error handling
 - Immediate gratification with live progress tracking
 - Practical outputs usable with existing tools
+
+## Troubleshooting
+
+### Hugging Face Hub Connection Issues
+
+If you receive the error:
+`An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.`
+
+This indicates that the backend server cannot establish a stable connection to Hugging Face, or is attempting to fetch a gated repository without proper authentication.
+
+#### Solutions:
+
+1. **Provide a Hugging Face Token**:
+   - If the model is gated (e.g., Llama-3, Llama-3.2, Mistral), ensure you have accepted the model terms on the Hugging Face website, and copy your Hugging Face Access Token into the **HF Token (optional)** input field in the web UI when initiating the download.
+
+2. **Configure a Hugging Face Mirror (e.g., in China)**:
+   - If Hugging Face is blocked in your region, set the `HF_ENDPOINT` environment variable to a mirror (like `https://hf-mirror.com`) before starting the server:
+     - **Windows**:
+       ```cmd
+       set HF_ENDPOINT=https://hf-mirror.com
+       start.bat
+       ```
+     - **Linux/Mac**:
+       ```bash
+       export HF_ENDPOINT=https://hf-mirror.com
+       ./start.sh
+       ```
+
+3. **Configure Terminal Proxies**:
+   - If your network requires a proxy to access Hugging Face, set the proxy environment variables in your terminal session before launching the scripts:
+     - **Windows**:
+       ```cmd
+       set HTTP_PROXY=http://127.0.0.1:YOUR_PORT
+       set HTTPS_PROXY=http://127.0.0.1:YOUR_PORT
+       start.bat
+       ```
+     - **Linux/Mac**:
+       ```bash
+       export HTTP_PROXY=http://127.0.0.1:YOUR_PORT
+       export HTTPS_PROXY=http://127.0.0.1:YOUR_PORT
+       ./start.sh
+       ```
+
+4. **Verify Local Write Permissions**:
+   - Ensure the `.hf_home` directory in the project root is writable by the user account running the backend server.
 
 ## Contributing
 

@@ -19,13 +19,22 @@ def parse_version(version: str | None) -> tuple[int, ...]:
 
 
 def choose_cuda_tag(cuda_version: str | None) -> str:
+    # Bucket thresholds mirror Unsloth's own installer (Get-TorchIndexUrl in
+    # unsloth/install.ps1): pick the newest CUDA wheel index the driver can
+    # still run (CUDA is backward compatible with older-toolkit wheels).
     parsed = parse_version(cuda_version)
     if parsed >= (13, 0):
         return "cu130"
+    if parsed >= (12, 8):
+        return "cu128"
+    if parsed >= (12, 6):
+        return "cu126"
     if parsed >= (12, 4):
         return "cu124"
     if parsed >= (12, 1):
         return "cu121"
+    if parsed >= (11, 0):
+        return "cu118"
     return "cpu"
 
 

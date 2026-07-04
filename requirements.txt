@@ -1,13 +1,19 @@
 # Core Unsloth fine-tuning dependencies
-trl
-peft
-accelerate
-bitsandbytes
-datasets
-huggingface_hub
-torch
-transformers
-unsloth[windows] @ git+https://github.com/unslothai/unsloth.git
+#
+# NOTE: install torch separately FIRST from the CUDA-specific index that matches your
+# GPU driver, e.g.:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+# (see scripts/install_deps.py / detect_hardware.py for automatic CUDA-tag detection).
+#
+# We intentionally use the `huggingface` extra here, not `windows`/`cuXXX-torchYYY`:
+# `unsloth[windows]` pins a loose, wheel-unconstrained xformers requirement that, when no
+# prebuilt wheel matches your (python, torch, cuda) combo, silently falls back to compiling
+# from source -- which requires a full MSVC + Windows SDK toolchain and fails without one.
+# `unsloth[huggingface]` pulls transformers/trl/peft/accelerate/datasets (Unsloth's own
+# tested-compatible version ranges) without requiring xformers; Unsloth falls back to
+# PyTorch's built-in SDPA attention automatically when xformers isn't installed.
+bitsandbytes>=0.45.5,!=0.46.0,!=0.48.0
+unsloth[huggingface] @ git+https://github.com/unslothai/unsloth.git
 
 # Backend web server dependencies
 uvicorn[standard]
