@@ -7,6 +7,7 @@ from pathlib import Path
 # Setup environment variable overrides BEFORE imports
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["UNSLOTH_COMPILE_DISABLE"] = "1"
+os.environ["UNSLOTH_ENABLE_FLEX_ATTENTION"] = "0"
 os.environ["UNSLOTH_LLAMA_CPP_PATH"] = str(Path(__file__).parent / ".unsloth" / "llama.cpp")
 os.environ["UV_CACHE_DIR"] = str(Path(__file__).parent / ".uv_cache")
 os.environ["PIP_CACHE_DIR"] = str(Path(__file__).parent / ".pip_cache")
@@ -21,6 +22,8 @@ from backend.gemma4_patch import apply_gemma4_patch
 apply_gemma4_patch()
 
 import torch
+torch._dynamo.config.disable = True  # Disable torch.compile globally to avoid cl.exe compiler crashes on Windows
+
 from unsloth import FastLanguageModel
 from unsloth import save as unsloth_save
 
