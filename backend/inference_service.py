@@ -28,6 +28,10 @@ class PlaygroundInferenceManager:
                 from backend.gemma4_patch import apply_gemma4_patch
                 apply_gemma4_patch()
 
+                import os
+                os.environ["_ENABLE_FLEX_ATTENTION"] = "0"
+                os.environ["_COMPILE_DISABLE"] = "1"
+
                 from  import FastLanguageModel
                 import torch
 
@@ -51,6 +55,7 @@ class PlaygroundInferenceManager:
                     dtype=None,
                     load_in_4bit=load_in_4bit,
                     device_map=device_map,
+                    attn_implementation="sdpa",  # Force SDPA to avoid flex_attention's torch.compile dependencies on Windows
                 )
                 if has_cuda:
                     FastLanguageModel.for_inference(model)  # Enable 2x faster inference in 

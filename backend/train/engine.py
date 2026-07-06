@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import pyarrow  # Must be imported before torch to prevent Windows DLL conflicts/segfaults
+import   # Must be imported before trl, transformers, peft to ensure optimizations are applied!
 import gc
 import json
 import os
 import shutil
 from pathlib import Path
+import sys
 from typing import Any
 
 from backend.train.schemas import TrainingJobPayload
@@ -228,6 +230,7 @@ def run_training_job(config: TrainingJobPayload) -> None:
         "load_in_4bit": load_in_4bit,
         "trust_remote_code": True,
         "device_map": device_map,
+        "attn_implementation": "sdpa",  # Force SDPA to avoid flex_attention's torch.compile dependencies on Windows
     }
     if config.rope_scaling and torch.cuda.is_available():
         from_pretrained_kwargs["rope_scaling"] = config.rope_scaling
@@ -260,6 +263,10 @@ def run_training_job(config: TrainingJobPayload) -> None:
         use_gradient_checkpointing=config.gradient_checkpointing,
         random_state=config.seed,
     )
+
+    # Configure model for training (disables use_cache, sets gradient checkpointing flags, etc.)
+    # Note: SFTTrainer does not call this automatically when running custom SFTTrainer pipelines.
+    FastLanguageModel.for_training(model, use_gradient_checkpointing=config.gradient_checkpointing)
 
     print("Loading local identity tracking dataset...")
     identity_loader = "json" if identity_dataset_path.suffix.lower() in {".json", ".jsonl"} else identity_dataset_path.suffix.lower().lstrip(".")
@@ -320,6 +327,10 @@ def run_training_job(config: TrainingJobPayload) -> None:
         except Exception:
             pass
 
+    # Multiprocess dataset mapping on Windows is extremely fragile due to dill/pickle serialization errors.
+    # We force single-process mapping (dataset_num_proc=None) on Windows.
+    dataset_num_proc = None if sys.platform == "win32" else config.dataset_num_proc
+
     trainer = SFTTrainer(
         model=model,
         processing_class=tokenizer,
@@ -342,7 +353,7 @@ def run_training_job(config: TrainingJobPayload) -> None:
             save_strategy="no",
             dataset_text_field="text",
             max_length=config.max_seq_length,
-            dataset_num_proc=config.dataset_num_proc,
+            dataset_num_proc=dataset_num_proc,
             packing=config.packing,
         ),
     )
