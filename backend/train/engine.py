@@ -159,9 +159,76 @@ def formatting_prompts_func(examples: dict[str, list[str]]) -> dict[str, list[st
     return {"text": texts}
 
 
+def diagnose_training_failure(exc: Exception) -> str:
+    """Best-effort classification of a training-pipeline failure into an actionable
+    message. Mirrors the REASON & RESOLUTION pattern already used below for GGUF-export
+    failures, applied instead to the model-load -> LoRA-setup -> dataset-prep ->
+    trainer.train() portion of the pipeline, which previously had no error boundary at
+    all and surfaced as a raw, often confusing traceback with no diagnosis.
+    """
+    message = str(exc).lower()
+    exc_type = type(exc).__name__
+    lines = ["\nREASON & RESOLUTION:"]
+
+    if "out of memory" in message or exc_type in {"OutOfMemoryError", "CUDAOutOfMemoryError"}:
+        lines.append("This looks like a CUDA out-of-memory error.")
+        lines.append("TO FIX THIS, try one or more of the following:")
+        lines.append("  - Lower 'max_seq_length' in your training config.")
+        lines.append("  - Lower 'per_device_train_batch_size' and/or raise 'gradient_accumulation_steps'")
+        lines.append("    to compensate.")
+        lines.append("  - Enable 'use_4bit' quantization if it isn't already enabled.")
+        lines.append("  - Close other GPU-using processes/notebooks before starting training.")
+    elif "gated repo" in message or "401" in message or "access to model" in message or "repositorynotfound" in exc_type.lower():
+        lines.append("This looks like a Hugging Face access/authentication error.")
+        lines.append("TO FIX THIS:")
+        lines.append("  - If the base model is gated, accept its license on huggingface.co and set an HF")
+        lines.append("    token (huggingface-cli login, or the HF_TOKEN env var) before training.")
+        lines.append("  - Double check 'local_model_path' points at a valid, fully-downloaded model directory.")
+    elif isinstance(exc, FileNotFoundError) or "no such file" in message or "does not exist" in message:
+        lines.append("A required file or directory could not be found.")
+        lines.append("TO FIX THIS:")
+        lines.append("  - Verify 'local_model_path', 'identity_dataset_path', and 'coding_dataset_path' in")
+        lines.append("    your training config all point at paths that actually exist.")
+    elif "flex_attention" in message or "torch.compile" in message or "compileerror" in exc_type.lower() or "triton" in message:
+        lines.append("This looks like a torch.compile/Triton compiler issue (common on Windows without a")
+        lines.append("full MSVC toolchain, or on unsupported GPU architectures).")
+        lines.append("TO FIX THIS:")
+        lines.append("  - Confirm _COMPILE_DISABLE=1 is set (it is, by default, in this project).")
+        lines.append("  - Re-run setup.sh/setup.bat to reinstall a matched torch//trl/transformers combo.")
+        lines.append("  - Delete the '_compiled_cache/' directory and retry (forces a clean recompile).")
+    elif "dtype" in message or "attn_implementation" in message or "attention" in message:
+        lines.append("This looks like a dtype or attention-implementation mismatch, often caused by an")
+        lines.append("incompatible combination of torch/transformers/ versions.")
+        lines.append("TO FIX THIS:")
+        lines.append("  - Re-run setup.sh/setup.bat (it now pins a tested-compatible version combination).")
+        lines.append("  - Delete '.venv' and reinstall from scratch if the issue persists after re-running setup.")
+    else:
+        lines.append("No specific known cause matched this error automatically.")
+        lines.append("TO FIX THIS:")
+        lines.append("  - Re-run setup.sh/setup.bat to confirm your ML dependency versions are the pinned,")
+        lines.append("    tested-compatible combination (this fixes most 'different error on every device'")
+        lines.append("    crashes).")
+        lines.append("  - Check that your dataset files match the expected instruction/output/cot schema.")
+        lines.append(f"  - Exception type: {exc_type}")
+
+    return "\n".join(lines)
+
+
 def run_training_job(config: TrainingJobPayload) -> None:
     prepare_runtime_environment()
 
+    try:
+        _run_training_pipeline(config)
+    except Exception as exc:
+        print("\n" + "!" * 60)
+        print("TRAINING FAILED.")
+        print(f"Error ({type(exc).__name__}): {exc}")
+        print(diagnose_training_failure(exc))
+        print("!" * 60 + "\n")
+        raise
+
+
+def _run_training_pipeline(config: TrainingJobPayload) -> None:
     from backend.gemma4_patch import apply_gemma4_patch
     apply_gemma4_patch()
 
@@ -223,6 +290,19 @@ def run_training_job(config: TrainingJobPayload) -> None:
         device_map = "cpu"
         load_in_4bit = False
 
+    # 's use_gradient_checkpointing="" (the default, see schemas.py) enables
+    # its custom CUDA-only offloaded-checkpointing kernel and will throw on a CPU-only
+    # device (e.g. a GPU-less machine, or a misdetected/no-GPU Kaggle CPU session). Fall
+    # back to plain HF-style gradient checkpointing (True) in that case instead of
+    # crashing before training even starts.
+    gradient_checkpointing = config.gradient_checkpointing
+    if device_map == "cpu" and gradient_checkpointing == "":
+        print(
+            "No CUDA device detected: falling back gradient_checkpointing from '' "
+            "(CUDA-only) to standard 'True' for CPU training."
+        )
+        gradient_checkpointing = True
+
     from_pretrained_kwargs: dict[str, Any] = {
         "model_name": str(base_model_path),
         "max_seq_length": config.max_seq_length,
@@ -260,13 +340,13 @@ def run_training_job(config: TrainingJobPayload) -> None:
         lora_alpha=config.lora_alpha,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing=config.gradient_checkpointing,
+        use_gradient_checkpointing=gradient_checkpointing,
         random_state=config.seed,
     )
 
     # Configure model for training (disables use_cache, sets gradient checkpointing flags, etc.)
     # Note: SFTTrainer does not call this automatically when running custom SFTTrainer pipelines.
-    FastLanguageModel.for_training(model, use_gradient_checkpointing=config.gradient_checkpointing)
+    FastLanguageModel.for_training(model, use_gradient_checkpointing=gradient_checkpointing)
 
     print("Loading local identity tracking dataset...")
     identity_loader = "json" if identity_dataset_path.suffix.lower() in {".json", ".jsonl"} else identity_dataset_path.suffix.lower().lstrip(".")

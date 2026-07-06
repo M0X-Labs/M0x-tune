@@ -1,3 +1,11 @@
+# NOTE: this file only covers the FastAPI web layer. It intentionally does NOT include
+# /torch/trl/transformers/etc -- those are the ML training stack and are installed
+# separately (with hardware-specific pinning) via the root `scripts/install_deps.py`
+# (see requirements.txt at the repo root for the pinned versions). Installing only this
+# file gets you a backend that starts but whose training endpoint will fail with
+# `ModuleNotFoundError: No module named ''` the moment a job is submitted --
+# run `python scripts/install_deps.py` from the repo root first (or `./setup.sh` /
+# `setup.bat`, which do this automatically) if you need to actually run fine-tuning.
 fastapi>=0.115
 uvicorn[standard]>=0.30
 pydantic>=2.8

@@ -153,8 +153,8 @@ if %errorlevel% equ 0 (
     echo Warning: Node.js was not found. Please install Node.js v18 or higher to run the web interface.
 )
 
-echo Running smoke test...
-".venv\Scripts\python.exe" -c "import os, torch; print('torch', torch.__version__); print('cuda_available', torch.cuda.is_available()); print('device_count', torch.cuda.device_count()); print('hf_home', os.environ.get('HF_HOME'))"
+echo Running smoke test (importing torch//trl/peft/transformers)...
+".venv\Scripts\python.exe" "scripts\smoke_test.py"
 if errorlevel 1 exit /b 1
 
 echo Setup complete.

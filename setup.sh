@@ -59,7 +59,7 @@ else
   echo "Warning: Node.js was not found. Please install Node.js (v18+) to run the web interface."
 fi
 
-echo "Running smoke test..."
-"$PYTHON" -c "import os, torch; print('torch', torch.__version__); print('cuda_available', torch.cuda.is_available()); print('device_count', torch.cuda.device_count()); print('hf_home', os.environ.get('HF_HOME'))"
+echo "Running smoke test (importing torch//trl/peft/transformers)..."
+"$PYTHON" scripts/smoke_test.py
 
 echo "Setup complete."
