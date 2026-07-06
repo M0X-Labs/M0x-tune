@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import os
+os.environ["UNSLOTH_ENABLE_FLEX_ATTENTION"] = "0"
+os.environ["UNSLOTH_COMPILE_DISABLE"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import pyarrow  # Must be imported before torch to prevent Windows DLL conflicts/segfaults
+import unsloth  # Must be imported before trl, transformers, peft to ensure optimizations are applied!
+import torch
+torch._dynamo.config.disable = True  # Disable torch.compile globally to avoid cl.exe compiler crashes on Windows
+
 import argparse
 from pathlib import Path
 
