@@ -4,21 +4,64 @@ import sys
 # Linux / Colab CUDA library preloader to prevent bitsandbytes loading failures (e.g. libnvJitLink.so.13)
 if sys.platform != "win32":
     import ctypes
+    import site
     from pathlib import Path
     
     preload_libs = ["libnvJitLink.so.13", "libnvJitLink.so.12", "libnvJitLink.so"]
     loaded = False
     for lib_name in preload_libs:
-        for cuda_dir in Path("/usr/local").glob("cuda-*"):
-            lib_path = cuda_dir / "lib64" / lib_name
-            if lib_path.exists():
-                try:
-                    ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
-                    print(f"[SYSTEM] Successfully preloaded CUDA library: {lib_path}")
-                    loaded = True
-                    break
-                except Exception:
-                    pass
+        # 1. Search in /usr/local/cuda-*
+        if Path("/usr/local").exists():
+            for cuda_dir in Path("/usr/local").glob("cuda-*"):
+                lib_path = cuda_dir / "lib64" / lib_name
+                if lib_path.exists():
+                    try:
+                        ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+                        print(f"[SYSTEM] Successfully preloaded CUDA library: {lib_path}")
+                        loaded = True
+                        break
+                    except Exception:
+                        pass
+        if loaded:
+            break
+
+        # 2. Search in python site-packages / sys.path
+        search_paths = []
+        for p in sys.path:
+            if p:
+                search_paths.append(Path(p))
+        try:
+            for p in site.getsitepackages():
+                if p:
+                    search_paths.append(Path(p))
+        except Exception:
+            pass
+        try:
+            user_site = site.getusersitepackages()
+            if user_site:
+                search_paths.append(Path(user_site))
+        except Exception:
+            pass
+
+        for p in search_paths:
+            try:
+                resolved = p.resolve()
+                if resolved.exists():
+                    nvidia_dir = resolved / "nvidia"
+                    if nvidia_dir.exists():
+                        for found_lib in nvidia_dir.glob(f"**/{lib_name}*"):
+                            if found_lib.is_file():
+                                try:
+                                    ctypes.CDLL(str(found_lib), mode=ctypes.RTLD_GLOBAL)
+                                    print(f"[SYSTEM] Successfully preloaded CUDA library from site-packages: {found_lib}")
+                                    loaded = True
+                                    break
+                                except Exception:
+                                    pass
+            except Exception:
+                pass
+            if loaded:
+                break
         if loaded:
             break
 

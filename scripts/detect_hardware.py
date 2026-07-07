@@ -163,6 +163,57 @@ def find_amd_rocm() -> tuple[str | None, str | None]:
     return rocm_version, rocm_gfx_arch
 
 
+def get_installed_cuda_version() -> str | None:
+    import shutil
+    import os
+    # 1. Try running nvcc --version
+    nvcc_path = shutil.which("nvcc")
+    if not nvcc_path:
+        # Check standard location on Linux/Unix
+        if os.path.exists("/usr/local/cuda/bin/nvcc"):
+            nvcc_path = "/usr/local/cuda/bin/nvcc"
+            
+    if nvcc_path:
+        try:
+            res = subprocess.run([nvcc_path, "--version"], capture_output=True, text=True, check=True)
+            # Match release version e.g. "release 12.2, V12.2.140" or "release 12.4"
+            m = re.search(r"release\s+([0-9.]+)", res.stdout)
+            if m:
+                return m.group(1)
+        except Exception:
+            pass
+
+    # 2. Try checking version.txt in /usr/local/cuda
+    if os.path.exists("/usr/local/cuda/version.txt"):
+        try:
+            with open("/usr/local/cuda/version.txt", "r") as f:
+                content = f.read()
+                m = re.search(r"CUDA Version\s+([0-9.]+)", content)
+                if m:
+                    return m.group(1)
+        except Exception:
+            pass
+
+    # 3. Scan /usr/local/ for cuda directories (e.g. /usr/local/cuda-12.2)
+    if os.path.exists("/usr/local"):
+        try:
+            versions = []
+            for item in os.listdir("/usr/local"):
+                if item.startswith("cuda-"):
+                    ver_str = item[5:]
+                    parsed = parse_version(ver_str)
+                    if parsed:
+                        versions.append((parsed, ver_str))
+            if versions:
+                # Return the highest parsed version
+                versions.sort()
+                return versions[-1][1]
+        except Exception:
+            pass
+
+    return None
+
+
 def query_nvidia_smi() -> dict[str, Any]:
     info: dict[str, Any] = {
         "has_nvidia_gpu": False,
@@ -221,8 +272,20 @@ def query_nvidia_smi() -> dict[str, Any]:
             )
             combined_output = "\n".join(filter(None, [summary.stdout, summary.stderr]))
             cuda_match = re.search(r"CUDA(?:\s+UMD)?\s+Version:\s*([0-9.]+)", combined_output)
-            if cuda_match:
-                info["max_cuda_version"] = cuda_match.group(1)
+            
+            driver_cuda_version = cuda_match.group(1) if cuda_match else None
+            info["max_cuda_version"] = driver_cuda_version
+            
+            # Detect installed CUDA Toolkit version
+            toolkit_version = get_installed_cuda_version()
+            if toolkit_version:
+                driver_parsed = parse_version(driver_cuda_version)
+                toolkit_parsed = parse_version(toolkit_version)
+                if driver_parsed and toolkit_parsed:
+                    # Cap driver_cuda_version at installed toolkit version
+                    if toolkit_parsed < driver_parsed:
+                        info["max_cuda_version"] = toolkit_version
+            
             info["selected_cuda_tag"] = choose_cuda_tag(info["max_cuda_version"])
             info["raw_summary"] = combined_output.strip()[:5000]
         except Exception as exc:
