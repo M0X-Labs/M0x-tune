@@ -13,6 +13,8 @@ base_model/
 identity/
 datasets/
 mllm-runner/
+m0x_m1/
+m0x_m1_lora/
 
 
 # Backend runtime directory (jobs config, uploaded datasets, downloaded models)

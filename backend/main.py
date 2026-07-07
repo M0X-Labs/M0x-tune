@@ -1,11 +1,32 @@
 from __future__ import annotations
 
+import sys
+# Linux / Colab CUDA library preloader to prevent bitsandbytes loading failures (e.g. libnvJitLink.so.13)
+if sys.platform != "win32":
+    import ctypes
+    from pathlib import Path
+    
+    preload_libs = ["libnvJitLink.so.13", "libnvJitLink.so.12", "libnvJitLink.so"]
+    loaded = False
+    for lib_name in preload_libs:
+        for cuda_dir in Path("/usr/local").glob("cuda-*"):
+            lib_path = cuda_dir / "lib64" / lib_name
+            if lib_path.exists():
+                try:
+                    ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+                    print(f"[SYSTEM] Successfully preloaded CUDA library: {lib_path}")
+                    loaded = True
+                    break
+                except Exception:
+                    pass
+        if loaded:
+            break
+
 import pyarrow  # Must be imported before torch to prevent Windows DLL conflicts/segfaults
 import json
 import os
 import re
 import subprocess
-import sys
 import threading
 import uuid
 from collections import deque
