@@ -47,27 +47,72 @@ export default function MonitorPage() {
   const esRef = useRef<EventSource | null>(null);
   const stepCounter = useRef<number>(0);
 
-  const streamUrl = useMemo(() => {
-    if (!jobId) return "/api/train";
-    return `/api/train?jobId=${encodeURIComponent(jobId)}`;
+  // Initialize jobId from URL search parameters on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlJobId = params.get("jobId");
+      if (urlJobId) {
+        setJobId(urlJobId);
+      }
+    }
+  }, []);
+
+  // Poll for the active job if we don't have a jobId yet
+  useEffect(() => {
+    let active = true;
+    const checkActiveJob = async () => {
+      try {
+        const res = await fetch("/api/jobs/active", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && data.jobId) {
+          setJobId(data.jobId);
+          setStatus(data.status);
+        } else if (active) {
+          setStatus("idle");
+          setConnectionState("closed");
+        }
+      } catch (err) {
+        console.error("Failed to check active job:", err);
+      }
+    };
+
+    if (!jobId) {
+      checkActiveJob();
+      const interval = setInterval(() => {
+        if (!jobId) checkActiveJob();
+      }, 3000);
+      return () => {
+        active = false;
+        clearInterval(interval);
+      };
+    }
   }, [jobId]);
 
   const connect = useCallback(() => {
+    if (!jobId) {
+      setConnectionState("closed");
+      return;
+    }
+
     if (esRef.current) {
       esRef.current.close();
       esRef.current = null;
     }
+
     setConnectionState("connecting");
-    const es = new EventSource(streamUrl);
+    // Connect directly to the backend events endpoint (which uses the Next.js rewrite rule to proxy)
+    // to bypass the Next.js App Router Route Handler event-stream buffering.
+    const es = new EventSource(`/api/jobs/${encodeURIComponent(jobId)}/events`);
     esRef.current = es;
 
     es.addEventListener("status", (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as { status?: string; jobId?: string };
         if (data.status) setStatus(data.status as TrainStatus);
-        if (data.jobId) setJobId(data.jobId);
       } catch {
-        // ignore malformed event
+        // ignore
       }
     });
 
@@ -84,7 +129,7 @@ export default function MonitorPage() {
         if (typeof data.totalSteps === "number") setTotalSteps(data.totalSteps);
         if (typeof data.timeInfo === "string") setTimeInfo(data.timeInfo);
       } catch {
-        // ignore malformed event
+        // ignore
       }
     });
 
@@ -109,7 +154,7 @@ export default function MonitorPage() {
           setEpoch(data.epoch);
         }
       } catch {
-        // ignore malformed event
+        // ignore
       }
     });
 
@@ -120,7 +165,7 @@ export default function MonitorPage() {
           setLogs((prev) => [...prev.slice(-600), data.text as string]);
         }
       } catch {
-        // ignore malformed event
+        // ignore
       }
     });
 
@@ -129,17 +174,22 @@ export default function MonitorPage() {
       setConnectionState("error");
       es.close();
       esRef.current = null;
-      setTimeout(connect, 3000);
+      // Retry connection after 3 seconds if we still have a jobId
+      setTimeout(() => {
+        if (jobId) connect();
+      }, 3000);
     };
-  }, [streamUrl]);
+  }, [jobId]);
 
   useEffect(() => {
-    connect();
+    if (jobId) {
+      connect();
+    }
     return () => {
       esRef.current?.close();
       esRef.current = null;
     };
-  }, [connect]);
+  }, [jobId, connect]);
 
   const terminateFinetuning = useCallback(async () => {
     if (!confirm("Are you sure you want to terminate training?")) return;

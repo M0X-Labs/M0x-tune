@@ -381,7 +381,8 @@ export default function ConfigPage() {
         const errorData = await trainRes.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to start training session.");
       }
-      router.push("/monitor");
+      const data = await trainRes.json();
+      router.push(`/monitor?jobId=${encodeURIComponent(data.jobId)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       alert(`Error starting fine-tuning: ${message}`);

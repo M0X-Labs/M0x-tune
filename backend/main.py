@@ -639,7 +639,11 @@ def get_job_events(job_id: str) -> StreamingResponse:
     return StreamingResponse(
         create_sse_stream(job),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -694,7 +698,11 @@ def get_export_events(export_id: str) -> StreamingResponse:
     return StreamingResponse(
         create_export_sse_stream(exp),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -920,7 +928,11 @@ def stream_system_logs(service: str) -> StreamingResponse:
     return StreamingResponse(
         tail_log_file(file_path),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

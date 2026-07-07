@@ -1,15 +1,15 @@
 {
-  "local_model_path": "./base_model",
+  "local_model_path": "D:/models/m0x-tune/base_model/gemma4-12b",
   "coding_dataset_path": "datasets/identity_dataset.jsonl",
   "coding_dataset_paths": [
     "datasets/identity_dataset.jsonl"
   ],
   "output_gguf_name": "m0x_m1",
   "learning_rate": 0.0002,
-  "max_steps": 150,
-  "per_device_train_batch_size": 1,
+  "max_steps": 300,
+  "per_device_train_batch_size": 2,
   "gradient_accumulation_steps": 4,
-  "max_seq_length": 512,
-  "lora_r": 8,
+  "max_seq_length": 1024,
+  "lora_r": 16,
   "lora_alpha": 16
 }
