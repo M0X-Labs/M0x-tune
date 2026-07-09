@@ -1,5 +1,5 @@
 {
-  "local_model_path": "D:/models/m0x-tune/base_model/gemma4-12b",
+  "local_model_path": "./base_model",
   "coding_dataset_path": "datasets/identity_dataset.jsonl",
   "coding_dataset_paths": [
     "datasets/identity_dataset.jsonl"

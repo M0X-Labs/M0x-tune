@@ -60,7 +60,7 @@ set "PORT=%PORT_FRONTEND%"
 set "HOSTNAME=0.0.0.0"
 
 echo Starting backend server (FastAPI) on port %PORT_BACKEND%...
-start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port %PORT_BACKEND% > "%ROOT_DIR%backend.log" 2>&1"
+start "m0x-tune Backend" cmd /k ""%ROOT_DIR%.venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port %PORT_BACKEND%" > "%ROOT_DIR%backend.log" 2>&1
 
 timeout /t 2 /nobreak >nul
 
@@ -78,7 +78,7 @@ if %ERRORLEVEL% neq 0 (
         echo Production build not found. Building frontend - this may take a minute...
         cmd /c "npm run build"
     )
-    start "m0x-tune Frontend" cmd /k "npx next start -H 0.0.0.0 -p %PORT_FRONTEND% > "%ROOT_DIR%frontend.log" 2>&1"
+    start "m0x-tune Frontend" cmd /k "npx next start -H 0.0.0.0 -p %PORT_FRONTEND%" > "%ROOT_DIR%frontend.log" 2>&1
 )
 cd ..
 

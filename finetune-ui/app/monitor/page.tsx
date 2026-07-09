@@ -175,8 +175,9 @@ export default function MonitorPage() {
       es.close();
       esRef.current = null;
       // Retry connection after 3 seconds if we still have a jobId
+      const currentJobId = jobId;
       setTimeout(() => {
-        if (jobId) connect();
+        if (currentJobId) connect();
       }, 3000);
     };
   }, [jobId]);

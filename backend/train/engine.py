@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pyarrow  # Must be imported before torch to prevent Windows DLL conflicts/segfaults
-import   # Must be imported before trl, transformers, peft to ensure optimizations are applied!
+import unsloth  # Must be imported before trl, transformers, peft to ensure optimizations are applied!
 import gc
 import json
 import os
@@ -194,11 +194,11 @@ def diagnose_training_failure(exc: Exception) -> str:
         lines.append("full MSVC toolchain, or on unsupported GPU architectures).")
         lines.append("TO FIX THIS:")
         lines.append("  - Confirm _COMPILE_DISABLE=1 is set (it is, by default, in this project).")
-        lines.append("  - Re-run setup.sh/setup.bat to reinstall a matched torch//trl/transformers combo.")
-        lines.append("  - Delete the '_compiled_cache/' directory and retry (forces a clean recompile).")
+        lines.append("  - Re-run setup.sh/setup.bat to reinstall a matched torch/unsloth/trl/transformers combo.")
+        lines.append("  - Delete the 'unsloth_compiled_cache/' directory and retry (forces a clean recompile).")
     elif "dtype" in message or "attn_implementation" in message or "attention" in message:
         lines.append("This looks like a dtype or attention-implementation mismatch, often caused by an")
-        lines.append("incompatible combination of torch/transformers/ versions.")
+        lines.append("incompatible combination of torch/transformers/unsloth versions.")
         lines.append("TO FIX THIS:")
         lines.append("  - Re-run setup.sh/setup.bat (it now pins a tested-compatible version combination).")
         lines.append("  - Delete '.venv' and reinstall from scratch if the issue persists after re-running setup.")
@@ -240,8 +240,8 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
         torch.cuda.empty_cache()
     from datasets import concatenate_datasets, load_dataset
     from trl import SFTConfig, SFTTrainer
-    from  import FastLanguageModel
-    from  import save as _save
+    from unsloth import FastLanguageModel
+    from unsloth import save as unsloth_save
 
     base_model_path = resolve_path(config.local_model_path)
     
@@ -269,7 +269,7 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
     output_gguf_name = resolve_path(config.output_gguf_name)
 
     processor_config_path = base_model_path / "processor_config.json"
-    apply_gguf_patch(_save, processor_config_path)
+    apply_gguf_patch(unsloth_save, processor_config_path)
 
     print("Loading training configuration from API payload...")
     print(f"Base model path: {base_model_path}")
@@ -290,7 +290,7 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
         device_map = "cpu"
         load_in_4bit = False
 
-    # 's use_gradient_checkpointing="" (the default, see schemas.py) enables
+    # Unsloth's use_gradient_checkpointing="unsloth" (the default, see schemas.py) enables
     # its custom CUDA-only offloaded-checkpointing kernel and will throw on a CPU-only
     # device (e.g. a GPU-less machine, or a misdetected/no-GPU Kaggle CPU session). Fall
     # back to plain HF-style gradient checkpointing (True) in that case instead of
@@ -298,7 +298,7 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
     gradient_checkpointing = config.gradient_checkpointing
     if device_map == "cpu" and gradient_checkpointing == "":
         print(
-            "No CUDA device detected: falling back gradient_checkpointing from '' "
+            'No CUDA device detected: falling back gradient_checkpointing from "unsloth" '
             "(CUDA-only) to standard 'True' for CPU training."
         )
         gradient_checkpointing = True
@@ -398,7 +398,7 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
     # `max_seq_length=`, `dataset_num_proc=`, and `packing=` directly as SFTTrainer(...)
     # constructor kwargs alongside a plain TrainingArguments. They now live on SFTConfig
     # (a TrainingArguments subclass), and the tokenizer/processor kwarg was renamed to
-    # `processing_class`. This mirrors 's own reference training script
+    # `processing_class`. This mirrors Unsloth's own reference training script
     # (-cli.py) exactly, and avoids a hard TypeError at trainer construction.
     has_bf16 = False
     if torch.cuda.is_available():
@@ -418,7 +418,7 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
         args=SFTConfig(
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
-            gradient_checkpointing=False,  # Let 's model-level gradient checkpointing manage this
+            gradient_checkpointing=False,  # Let Unsloth's model-level gradient checkpointing manage this
             warmup_steps=config.warmup_steps,
             max_steps=config.max_steps,
             learning_rate=config.learning_rate,

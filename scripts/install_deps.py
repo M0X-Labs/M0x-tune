@@ -62,11 +62,11 @@ COMMON_PACKAGES = [
     # copied verbatim from that release's own `huggingfacenotorch` pyproject extra --
     # makes every install reproducible across devices and environments. When bumping
     # this version, re-copy the ranges below from the new release's pyproject.toml.
-    "[huggingface]==2026.6.9",
-    "_zoo>=2026.6.7",
+    "unsloth[huggingface]==2026.6.9",
+    "unsloth_zoo>=2026.6.7",
     "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
     "accelerate>=0.34.1",
-    "peft>=0.18.0,!=0.11.0",
+    "peft>=0.18.0",
     "huggingface_hub>=0.34.0",
     "transformers>=4.51.3,!=4.52.0,!=4.52.1,!=4.52.2,!=4.52.3,!=4.53.0,!=4.54.0,!=4.55.0,!=4.55.1,!=4.57.0,!=4.57.4,!=4.57.5,!=5.0.0,!=5.1.0,<=5.5.0",
     "trl>=0.18.2,!=0.19.0,<=0.24.0",
@@ -279,7 +279,7 @@ def main() -> int:
                 print(f"Warning: Installation failed: {e}. Retrying in 10 seconds...")
                 time.sleep(10)
             else:
-                raise e
+                raise
     return 0
 
 

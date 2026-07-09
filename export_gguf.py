@@ -24,11 +24,11 @@ apply_gemma4_patch()
 import torch
 torch._dynamo.config.disable = True  # Disable torch.compile globally to avoid cl.exe compiler crashes on Windows
 
-from  import FastLanguageModel
-from  import save as _save
+from unsloth import FastLanguageModel
+from unsloth import save as unsloth_save
 
 # Monkeypatch save_to_gguf to inject processor_config.json
-original_save_to_gguf = _save.save_to_gguf
+original_save_to_gguf = unsloth_save.save_to_gguf
 
 
 def patched_save_to_gguf(*args, **kwargs):
@@ -49,7 +49,7 @@ def patched_save_to_gguf(*args, **kwargs):
     return original_save_to_gguf(*args, **kwargs)
 
 
-_save.save_to_gguf = patched_save_to_gguf
+unsloth_save.save_to_gguf = patched_save_to_gguf
 
 
 def main():
@@ -78,7 +78,7 @@ def main():
 
     output_gguf_name = config_data.get("output_gguf_name", "m0x_m1")
     max_seq_length = int(config_data.get("max_seq_length", 1024))
-    model_path = config_data.get("model_path", "./m0x_m1_lora")
+    model_path = config_data.get("model_path") or config_data.get("local_model_path", "./m0x_m1_lora")
     quantization_methods = config_data.get("quantization_methods", ["q4_k_m"])
 
     print(f"Loading model from {model_path} (context length: {max_seq_length})...")

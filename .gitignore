@@ -3,7 +3,6 @@ base_model/
 **/venv/
 **/.venv/
 **/.uv_cache/
-**/./
 **/.tmp/
 **/.pip_cache/
 **/.npm-cache/

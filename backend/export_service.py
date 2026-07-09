@@ -102,52 +102,60 @@ def run_export(exp: ExportRuntime) -> None:
     env["TEMP"] = str(PROJECT_ROOT / ".tmp")
     env["TMP"] = str(PROJECT_ROOT / ".tmp")
 
-    process = subprocess.Popen(
-        [sys.executable, str(EXPORT_SCRIPT), "--config", str(temp_config)],
-        cwd=PROJECT_ROOT,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-    )
-
-    with exp.lock:
-        exp.process = process
-
-    stdout_thread = threading.Thread(
-        target=export_stream_reader, args=(exp, process.stdout), daemon=True
-    )
-    stderr_thread = threading.Thread(
-        target=export_stream_reader, args=(exp, process.stderr), daemon=True
-    )
-    stdout_thread.start()
-    stderr_thread.start()
-
-    return_code = process.wait()
-    stdout_thread.join(timeout=1)
-    stderr_thread.join(timeout=1)
-
-    # Cleanup temp config
     try:
-        temp_config.unlink(missing_ok=True)
-    except Exception:
-        pass
+        process = subprocess.Popen(
+            [sys.executable, str(EXPORT_SCRIPT), "--config", str(temp_config)],
+            cwd=PROJECT_ROOT,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
 
-    with exp.lock:
-        cancelled = exp.status == "cancelled"
-        exp.process = None
+        with exp.lock:
+            exp.process = process
 
-    if cancelled:
-        append_export_log(exp, "[SYSTEM] Export terminated by user.")
-        return
+        stdout_thread = threading.Thread(
+            target=export_stream_reader, args=(exp, process.stdout), daemon=True
+        )
+        stderr_thread = threading.Thread(
+            target=export_stream_reader, args=(exp, process.stderr), daemon=True
+        )
+        stdout_thread.start()
+        stderr_thread.start()
 
-    if return_code == 0:
-        update_export_status(exp, "completed")
-    else:
+        return_code = process.wait()
+        stdout_thread.join(timeout=1)
+        stderr_thread.join(timeout=1)
+
+        with exp.lock:
+            cancelled = exp.status == "cancelled"
+            exp.process = None
+
+        if cancelled:
+            append_export_log(exp, "[SYSTEM] Export terminated by user.")
+            return
+
+        if return_code == 0:
+            update_export_status(exp, "completed")
+        else:
+            update_export_status(exp, "failed")
+    except Exception as exc:
+        with exp.lock:
+            exp.process = None
         update_export_status(exp, "failed")
+        import traceback
+        err_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        append_export_log(exp, f"[SYSTEM] Export process failed:\n{err_msg}")
+    finally:
+        # Cleanup temp config
+        try:
+            temp_config.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 def get_export(export_id: str) -> ExportRuntime:

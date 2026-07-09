@@ -11,6 +11,7 @@ export default function BottomTerminalPanel() {
   
   const esRef = useRef<EventSource | null>(null);
   const terminalEndRef = useRef<HTMLDivElement | null>(null);
+  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isOpen || !activeService) {
@@ -52,18 +53,18 @@ export default function BottomTerminalPanel() {
       setStatus("disconnected");
       es.close();
       esRef.current = null;
-      
+
       // Attempt reconnection
-      const reconnectTimeout = setTimeout(() => {
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      reconnectRef.current = setTimeout(() => {
         if (isOpen && activeService) {
           setStatus("connecting");
         }
       }, 3000);
-
-      return () => clearTimeout(reconnectTimeout);
     };
 
     return () => {
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (esRef.current) {
         esRef.current.close();
         esRef.current = null;

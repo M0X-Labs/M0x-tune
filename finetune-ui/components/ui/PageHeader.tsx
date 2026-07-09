@@ -22,7 +22,7 @@ export default function PageHeader({ icon, title, description, action }: PageHea
           </h1>
         </div>
         {description && (
-          <p className="text-[11.5px] text-[var(--text-secondary)] mt-2.5 ml-12.5 leading-relaxed max-w-2xl">
+          <p className="text-[11.5px] text-[var(--text-secondary)] mt-2.5 ml-12 leading-relaxed max-w-2xl">
             {description}
           </p>
         )}

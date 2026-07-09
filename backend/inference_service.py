@@ -13,6 +13,7 @@ class PlaygroundInferenceManager:
         self.status = "idle"  # "idle", "loading", "ready", "error"
         self.error = None
         self.lock = threading.Lock()
+        self._generating = False
 
     def load_model(self, model_path: str):
         with self.lock:
@@ -32,7 +33,7 @@ class PlaygroundInferenceManager:
                 os.environ["_ENABLE_FLEX_ATTENTION"] = "0"
                 os.environ["_COMPILE_DISABLE"] = "1"
 
-                from  import FastLanguageModel
+                from unsloth import FastLanguageModel
                 import torch
 
                 # Resolve relative path if needed
@@ -76,6 +77,9 @@ class PlaygroundInferenceManager:
         threading.Thread(target=_load, daemon=True).start()
 
     def unload_model(self):
+        if self._generating:
+            print("[PLAYGROUND] Generation in progress, deferring unload...")
+            return
         with self.lock:
             if self.model is not None:
                 print("[PLAYGROUND] Unloading model and cleaning VRAM cache...")
@@ -105,17 +109,18 @@ class PlaygroundInferenceManager:
             model = self.model
             tokenizer = self.tokenizer
 
+        self._generating = True
         try:
-            # Format dynamically using the model's tokenizer chat template if available, otherwise fallback
             try:
                 messages = [{"role": "user", "content": prompt}]
                 formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
             except Exception:
                 formatted_prompt = f"<bos><|turn>user\n{prompt}<turn|>\n<|turn>model\n"
-            
-            inputs = tokenizer([formatted_prompt], return_tensors="pt").to("cuda")
+
+            device = next(model.parameters()).device
+            inputs = tokenizer([formatted_prompt], return_tensors="pt").to(device)
             streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, clean_up_tokenization_spaces=True)
-            
+
             generation_kwargs = dict(
                 inputs,
                 streamer=streamer,
@@ -124,16 +129,17 @@ class PlaygroundInferenceManager:
                 top_p=top_p,
                 do_sample=temperature > 0.0,
             )
-            
-            # Generate in background thread to stream tokens on the caller thread
+
             thread = threading.Thread(target=model.generate, kwargs=generation_kwargs, daemon=True)
             thread.start()
-            
+
             for new_text in streamer:
                 yield new_text
-                
+
         except Exception as e:
             yield f"\n[PLAYGROUND INFERENCE ERROR] {e}"
+        finally:
+            self._generating = False
 
 # Global Singleton Manager
 inference_manager = PlaygroundInferenceManager()

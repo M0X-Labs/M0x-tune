@@ -106,6 +106,8 @@ export default function DashboardPage() {
     setNow(new Date());
     fetchDashboardData();
     fetchHardwareInfo();
+    const interval = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {

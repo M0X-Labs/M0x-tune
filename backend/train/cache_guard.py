@@ -27,7 +27,7 @@ COMPILED_CACHE_STAMP = COMPILED_CACHE_DIR / ".version_stamp"
 # unrelated-looking crash that only reproduces on whichever device happened to upgrade
 # first. Fingerprinting these versions lets us detect that drift and wipe the cache
 # before  regenerates it fresh.
-_CACHE_FINGERPRINT_PACKAGES = ("", "_zoo", "trl", "transformers", "peft", "accelerate")
+_CACHE_FINGERPRINT_PACKAGES = ("unsloth", "unsloth_zoo", "trl", "transformers", "peft", "accelerate")
 
 
 def _compute_cache_fingerprint() -> str:

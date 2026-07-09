@@ -52,7 +52,7 @@ export default function PlaygroundPage() {
   }, [messages]);
 
   // Load models
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     setLoadingModels(true);
     try {
       const [modelsRes, exportsRes] = await Promise.all([
@@ -95,7 +95,7 @@ export default function PlaygroundPage() {
     } finally {
       setLoadingModels(false);
     }
-  };
+  }, []);
 
   // Check model status
   const fetchStatus = useCallback(async () => {
@@ -113,7 +113,7 @@ export default function PlaygroundPage() {
   useEffect(() => {
     fetchModels();
     fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchModels]);
 
   // Poll status while loading
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function PlaygroundPage() {
 
   // Helper to parse reasoning out of streamed response
   const parseResponse = (text: string): { cot: string; cleanText: string } => {
-    const cotRegex = /<\|channel>thought\n([\s\S]*?)<channel|>\n?([\s\S]*)/;
+    const cotRegex = /<\|channel>thought\n([\s\S]*?)<channel\|>\n?([\s\S]*)/;
     const match = text.match(cotRegex);
     if (match) {
       return {

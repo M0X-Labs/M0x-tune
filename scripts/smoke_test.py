@@ -107,7 +107,7 @@ def main() -> int:
     # Import order matters for  (must come before trl/transformers/peft to
     # apply its optimization patches), so mirror that here even though this smoke
     # test doesn't actually train anything.
-    for package in ("", "trl", "peft", "transformers", "accelerate", "datasets"):
+    for package in ("trl", "peft", "transformers", "accelerate", "datasets"):
         try:
             module = __import__(package)
             version = getattr(module, "__version__", "unknown")
@@ -125,8 +125,8 @@ def main() -> int:
             "\nThis means fine-tuning will crash immediately when started. Common causes:\n"
             "  - The install was interrupted or partially failed (re-run setup.sh/setup.bat).\n"
             "  - An incompatible torch/CUDA build was selected for your GPU/driver.\n"
-            "  - A stale _compiled_cache/ directory from a previous, different install\n"
-            "    (delete _compiled_cache/ and re-run to force a clean recompile).\n"
+            "  - A stale unsloth_compiled_cache/ directory from a previous, different install\n"
+            "    (delete unsloth_compiled_cache/ and re-run to force a clean recompile).\n"
             "Please include the versions/errors printed above if reporting this issue."
         )
         print("!" * 60)

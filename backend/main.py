@@ -78,7 +78,7 @@ from backend.inference_service import inference_manager
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = PROJECT_ROOT / "backend" / "runtime" / "jobs"
-LOSS_PATTERN = re.compile(r"'loss':\s*'([^']*)'")
+LOSS_PATTERN = re.compile(r"'loss':\s*([0-9eE.\-]+)")
 LR_PATTERN = re.compile(r"'learning_rate':\s*([0-9eE.\-]+)")
 EPOCH_PATTERN = re.compile(r"'epoch':\s*([0-9.\-]+)")
 PROGRESS_PATTERN = re.compile(r"(\d+)%\s*\|.*\|\s*(\d+)\/(\d+)\s*\[([^\]]+)\]")
@@ -675,15 +675,13 @@ def cancel_job(job_id: str) -> JSONResponse:
         process = job.process
         if process is None or process.poll() is not None:
             raise HTTPException(status_code=400, detail="No running process for this job.")
-        job.status = "cancelled"
 
     process.terminate()
+    
+    with job.lock:
+        job.status = "cancelled"
     broadcast(job, "status", {"status": "cancelled", "jobId": job.job_id})
     return JSONResponse({"jobId": job.job_id, "status": "cancelled"})
-
-
-# Export endpoints
-import uuid
 
 
 @app.post("/api/exports")
@@ -749,13 +747,17 @@ def get_exported_files() -> dict[str, Any]:
 def download_exported_file(filename: str):
     from fastapi.responses import FileResponse
 
-    file_path = PROJECT_ROOT / filename
+    file_path = (PROJECT_ROOT / filename).resolve()
+    try:
+        file_path.relative_to(PROJECT_ROOT.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file path")
     if not file_path.is_file() or file_path.suffix.lower() != ".gguf":
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(
         path=file_path,
-        filename=filename,
+        filename=file_path.name,
         media_type="application/octet-stream",
     )
 
@@ -913,25 +915,31 @@ def tail_log_file(file_path: Path):
 
     # Stream new lines by periodically checking for size changes
     last_pos = file_path.stat().st_size
+    stale_count = 0
     try:
         while True:
             import time
             time.sleep(0.5)
-            
+
             if not file_path.exists():
+                stale_count += 1
+                if stale_count > 20:
+                    yield f"data: {json.dumps({'text': '[SYSTEM] Log file stream ended.'})}\n\n"
+                    return
                 continue
-                
+
+            stale_count = 0
             curr_size = file_path.stat().st_size
             if curr_size < last_pos:
                 last_pos = 0
                 yield f"data: {json.dumps({'text': '[SYSTEM] Log file was cleared/truncated.'})}\n\n"
-                
+
             if curr_size > last_pos:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     f.seek(last_pos)
                     new_content = f.read()
                     last_pos = f.tell()
-                    
+
                 # Split and yield all lines in new content
                 for line in new_content.splitlines():
                     yield f"data: {json.dumps({'text': line.rstrip()})}\n\n"

@@ -27,7 +27,7 @@ class TrainingJobPayload(BaseModel):
     packing: bool = Field(default=True)
     coding_subset_prefix_size: int = Field(default=80000, ge=1)
     coding_subset_limit: int = Field(default=10000, ge=1)
-    gradient_checkpointing: str | bool = Field(default="")
+    gradient_checkpointing: str | bool = Field(default="unsloth")
     quantization_method: str = Field(default="q4_k_m")
     use_4bit: bool = Field(default=True)
     rope_scaling: str | None = Field(default=None)

@@ -241,8 +241,8 @@ def _parse_jsonl(file_path: Path) -> tuple[list[str], int]:
                         rows += 1
                 except json.JSONDecodeError:
                     continue
-    except Exception:
-        pass
+    except Exception as e:
+        import logging; logging.warning(f"Failed to parse JSONL file {file_path}: {e}")
     return sorted(columns), rows
 
 
@@ -257,8 +257,8 @@ def _parse_csv(file_path: Path) -> tuple[list[str], int]:
                 columns = list(reader.fieldnames)
             for _ in reader:
                 rows += 1
-    except Exception:
-        pass
+    except Exception as e:
+        import logging; logging.warning(f"Failed to parse CSV file {file_path}: {e}")
     return columns, rows
 
 
@@ -271,7 +271,8 @@ def _parse_parquet(file_path: Path) -> tuple[list[str], int]:
         return table.schema.names, table.num_rows
     except ImportError:
         return [], 0
-    except Exception:
+    except Exception as e:
+        import logging; logging.warning(f"Failed to parse Parquet file {file_path}: {e}")
         return [], 0
 
 
