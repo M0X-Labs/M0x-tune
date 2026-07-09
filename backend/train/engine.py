@@ -303,6 +303,11 @@ def _run_training_pipeline(config: TrainingJobPayload) -> None:
         )
         gradient_checkpointing = True
 
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
+    os.environ["_ENABLE_FLEX_ATTENTION"] = "0"
+
     from_pretrained_kwargs: dict[str, Any] = {
         "model_name": str(base_model_path),
         "max_seq_length": config.max_seq_length,

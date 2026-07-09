@@ -1,0 +1,6 @@
+unsloth==2026.6.9
+unsloth_zoo==2026.6.7
+trl==0.24.0
+transformers==5.5.0
+peft==0.19.1
+accelerate==1.14.0
